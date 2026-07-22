@@ -57,7 +57,7 @@ The package is mirrored on all major public CDNs the moment it's published. Drop
 <script type="module" src="https://unpkg.com/patch-mark"></script>
 
 <!-- jsdelivr, version pinned (recommended for anything shared) -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/patch-mark@0.2.1"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/patch-mark@0.3.0"></script>
 ```
 
 Can't use `type="module"`? (CMS code boxes, tag managers, legacy pipelines) — use the IIFE build, which registers the element and exposes a `PatchMark` global:

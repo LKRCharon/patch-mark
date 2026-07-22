@@ -132,6 +132,7 @@ export class PatchMark extends BaseHTMLElement {
   private locatedTarget: PickerTarget | null = null;
   private selectedElement: HTMLElement | null = null;
   private selectionPath: HTMLElement[] = [];
+  private dodgeX = 0;
   private showProperties = false;
   private propertyChanges: Record<string, { from: string; to: string }> = {};
 
@@ -287,6 +288,7 @@ export class PatchMark extends BaseHTMLElement {
     this.propertyChanges = {};
     this.cleanupPicking();
     this.cleanupComposeTracking();
+    this.setDodgeSide('right');
     this.updateOverlay();
     this.updatePanel();
   }
@@ -334,6 +336,7 @@ export class PatchMark extends BaseHTMLElement {
 
   private cleanupPicking(): void {
     document.documentElement.classList.remove(PICKER_ACTIVE_CLASS);
+    this.panelEl?.classList.remove('is-ghost');
 
     if (this.boundMove) document.removeEventListener('mousemove', this.boundMove, true);
     if (this.boundClick) document.removeEventListener('click', this.boundClick, true);
@@ -369,8 +372,20 @@ export class PatchMark extends BaseHTMLElement {
 
   private handleMove(e: MouseEvent): void {
     this.pointerRef = { clientX: e.clientX, clientY: e.clientY };
+    this.updatePickingGhost(e.clientX, e.clientY);
     this.hoveredTarget = this.getTargetAtPoint(e.clientX, e.clientY);
     this.updateOverlay();
+  }
+
+  // Picking mode: pointer over the panel body ghosts the panel (see styles)
+  // so elements underneath stay hoverable; the header strip stays interactive.
+  private updatePickingGhost(x: number, y: number): void {
+    if (!this.panelEl || this.panelEl.style.display === 'none') return;
+    const rect = this.panelEl.getBoundingClientRect();
+    const header = this.panelEl.querySelector(`.${CLASS_PREFIX}-panel-header`);
+    const headerBottom = header ? header.getBoundingClientRect().bottom : rect.top;
+    const inBody = x >= rect.left && x <= rect.right && y >= headerBottom && y <= rect.bottom;
+    this.panelEl.classList.toggle('is-ghost', inBody);
   }
 
   private handleClick(e: MouseEvent): void {
@@ -469,6 +484,42 @@ export class PatchMark extends BaseHTMLElement {
     this.propertyChanges = {};
     this.updateOverlay();
     this.updatePanel();
+  }
+
+  // ---- Panel dodge (slide to the other side when covering the selection) ----
+
+  private setDodgeSide(side: 'left' | 'right'): void {
+    if (side === 'left' && this.dodgeX > 0) return;
+    if (side === 'right' && this.dodgeX === 0) return;
+
+    if (side === 'right') {
+      this.dodgeX = 0;
+      this.style.setProperty(`${CSS_VAR_PREFIX}-dodge-x`, '0px');
+      return;
+    }
+
+    const anchor = this.panelEl && this.panelEl.style.display !== 'none' ? this.panelEl : this.launcherEl;
+    if (!anchor) return;
+    const margin = 20;
+    const target = Math.round(anchor.getBoundingClientRect().left - margin);
+    if (target <= margin) return; // no room on the left side
+    this.dodgeX = target;
+    this.style.setProperty(`${CSS_VAR_PREFIX}-dodge-x`, `${target}px`);
+  }
+
+  // Compose mode: if the selected element sits under the panel, slide the
+  // panel to the opposite side. Triggered by element position, not pointer.
+  private updateComposeDodge(elementRect: DOMRect): void {
+    if (!this.panelEl || window.innerWidth <= 640) return;
+    const panelRect = this.panelEl.getBoundingClientRect();
+    const overlaps =
+      elementRect.right > panelRect.left &&
+      elementRect.left < panelRect.right &&
+      elementRect.bottom > panelRect.top &&
+      elementRect.top < panelRect.bottom;
+    if (!overlaps) return;
+    const elementCenter = (elementRect.left + elementRect.right) / 2;
+    this.setDodgeSide(elementCenter > window.innerWidth / 2 ? 'left' : 'right');
   }
 
   private removeKeyDownListener(): void {
@@ -886,6 +937,7 @@ export class PatchMark extends BaseHTMLElement {
     }
 
     const rect = element.getBoundingClientRect();
+    this.updateComposeDodge(rect);
     const labelTop = rect.top > 34 + 10 ? rect.top - 34 : rect.bottom + 8;
     const labelLeft = Math.min(Math.max(rect.left, 8), window.innerWidth - 240);
 
