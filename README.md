@@ -1,4 +1,4 @@
-# patch-mark
+# patch-mark: annotations that compile to prompts
 
 <p>
   <a href="https://www.npmjs.com/package/patch-mark"><img alt="npm version" src="https://img.shields.io/npm/v/patch-mark?style=flat-square&color=0058d0&label=npm"></a>
@@ -9,8 +9,6 @@
   <a href="https://github.com/LKRCharon/patch-mark/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
   <img alt="web component" src="https://img.shields.io/badge/%3Cpatch--mark%3E-web%20component-e34f26?style=flat-square&logo=html5&logoColor=white">
 </p>
-
-> **annotations that compile to prompts**
 
 UI feedback for AI coding agents.
 
@@ -59,7 +57,7 @@ The package is mirrored on all major public CDNs the moment it's published. Drop
 <script type="module" src="https://unpkg.com/patch-mark"></script>
 
 <!-- jsdelivr, version pinned (recommended for anything shared) -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/patch-mark@0.2.0"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/patch-mark@0.2.1"></script>
 ```
 
 Can't use `type="module"`? (CMS code boxes, tag managers, legacy pipelines) — use the IIFE build, which registers the element and exposes a `PatchMark` global:

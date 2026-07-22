@@ -11,3 +11,8 @@ export const UI_ATTR = 'data-pm-ui';
 export const PICKER_ACTIVE_CLASS = 'pm-picker-active';
 export const STORAGE_KEY_DEFAULT = 'patch-mark:annotations';
 export const VISIBLE_ATTR = 'visible';
+
+// Injected by esbuild at build time (--define); falls back to 'dev' when
+// the source is consumed without the define (e.g. direct ts-node import).
+declare const __PM_VERSION__: string;
+export const VERSION = typeof __PM_VERSION__ !== 'undefined' ? __PM_VERSION__ : 'dev';

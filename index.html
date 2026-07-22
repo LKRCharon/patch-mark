@@ -190,6 +190,7 @@ code {
   font-size: clamp(2.1rem, 6vw, 3.9rem);
   font-weight: 800;
   letter-spacing: -0.03em;
+  word-spacing: 0.08em;
   line-height: 1.08;
 }
 /* the product's own gesture, applied to the headline: a selected element
@@ -674,7 +675,7 @@ code {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
       </span>
       patch-mark
-      <span class="nav-version">v0.1.0</span>
+      <span class="nav-version">v0.2.0</span>
     </a>
     <div class="nav-links">
       <a href="#how">How it works</a>
@@ -1001,6 +1002,9 @@ code {
 <script type="module" src="dist/patch-mark.js"></script>
 <script type="module">
   // Point the UI at English for this demo: labels are fully customizable.
+  import { VERSION } from './dist/patch-mark.js';
+  const versionEl = document.querySelector('.nav-version');
+  if (versionEl && VERSION !== 'dev') versionEl.textContent = 'v' + VERSION;
   const tool = document.querySelector('patch-mark');
   customElements.whenDefined('patch-mark').then(() => {
     tool.labels = {

@@ -1,6 +1,6 @@
 {
   "name": "patch-mark",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "UI feedback for AI coding agents — point at elements, get structured context for your agent.",
   "type": "module",
   "main": "./dist/patch-mark.js",
@@ -20,8 +20,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc --emitDeclarationOnly && esbuild src/index.ts --bundle --format=esm --outfile=dist/patch-mark.js --minify && esbuild src/index.ts --bundle --format=iife --global-name=PatchMark --outfile=dist/patch-mark.iife.js --minify",
-    "build:dev": "tsc --emitDeclarationOnly && esbuild src/index.ts --bundle --format=esm --outfile=dist/patch-mark.js --sourcemap",
+    "build": "tsc --emitDeclarationOnly && esbuild src/index.ts --bundle --format=esm --outfile=dist/patch-mark.js --minify --define:__PM_VERSION__=\"'$npm_package_version'\" && esbuild src/index.ts --bundle --format=iife --global-name=PatchMark --outfile=dist/patch-mark.iife.js --minify --define:__PM_VERSION__=\"'$npm_package_version'\"",
+    "build:dev": "tsc --emitDeclarationOnly && esbuild src/index.ts --bundle --format=esm --outfile=dist/patch-mark.js --sourcemap --define:__PM_VERSION__=\"'$npm_package_version'\"",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
