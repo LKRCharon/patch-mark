@@ -1,0 +1,28 @@
+import type { AnnotationLabels } from './types.js';
+
+export const defaultLabels: AnnotationLabels = {
+  picker: '批注',
+  pickerHint: '悬停查看范围，点击后添加评语',
+  compose: '批注',
+  targetLabel: '目标元素',
+  placeholder: '留下评语…',
+  send: '发送',
+  sending: '发送中',
+  reselect: '重选',
+  list: '已批注',
+  locate: '定位',
+  close: '关闭批注',
+  empty: '当前页面还没有批注。',
+  loading: '正在读取…',
+  notFound: '未找到该元素，页面结构可能已经改动。',
+  contentPrefix: '内容：',
+  copyAsPrompt: 'Copy as prompt',
+  copied: '已复制',
+  resolve: '解决',
+  resolved: '已解决',
+  properties: '属性',
+  propertiesHint: '直接修改数值，反馈给 agent 精确指令',
+  colorLabel: '颜色',
+  fontLabel: '字体',
+  dragLabel: '拖动排序',
+};

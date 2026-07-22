@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>patch-mark: UI feedback for AI coding agents</title>
+<meta name="description" content="Point at any element on a preview page, write a comment, and hand your AI coding agent a structured prompt: selector, position, visible text, and your feedback." />
+<meta property="og:title" content="patch-mark: UI feedback for AI coding agents" />
+<meta property="og:description" content="Stop describing UI bugs. Start pointing at them. A tiny Web Component that turns visual feedback into machine-readable prompts." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%230058d0' stroke-width='2.5'/%3E%3Ccircle cx='12' cy='12' r='2.5' fill='%230058d0'/%3E%3C/svg%3E" />
+<style>
+:root {
+  --accent: #0058d0;
+  --accent-dark: #003f99;
+  --accent-soft: rgba(0, 88, 208, 0.12);
+  --accent-text: #0058d0;
+  --ink: #0b1220;
+  --muted: #506070;
+  --line: rgba(0, 54, 128, 0.14);
+  --line-strong: rgba(0, 54, 128, 0.24);
+  --bg: #ffffff;
+  --bg-soft: #f4f7fc;
+  --surface: #ffffff;
+  --nav-bg: rgba(255, 255, 255, 0.82);
+  --grid-line: rgba(0, 54, 128, 0.08);
+  --shadow: rgba(7, 19, 33, 0.06);
+  --code-bg: #0e1626;
+  --mono: "SF Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent-dark: #2a6ae4;
+    --accent-soft: rgba(94, 148, 238, 0.16);
+    --accent-text: #7cb3ff;
+    --ink: #e9eff8;
+    --muted: #9badc4;
+    --line: rgba(139, 170, 220, 0.16);
+    --line-strong: rgba(139, 170, 220, 0.3);
+    --bg: #0d1420;
+    --bg-soft: #111a2b;
+    --surface: #131d30;
+    --nav-bg: rgba(13, 20, 32, 0.82);
+    --grid-line: rgba(139, 170, 220, 0.09);
+    --shadow: rgba(0, 0, 0, 0.35);
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--accent-soft); }
+h1, h2, h3, p { margin: 0; }
+h1, h2 { text-wrap: balance; }
+a { color: var(--accent-text); text-decoration: none; }
+.wrap { max-width: 68rem; margin: 0 auto; padding: 0 1.5rem; }
+section { scroll-margin-top: 5rem; }
+code {
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+  background: var(--bg-soft);
+  padding: 0.05rem 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.85em;
+  color: var(--accent-text);
+}
+
+/* ---------- Nav ---------- */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--line);
+  background: var(--nav-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 3.75rem;
+}
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.nav-logo {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: #fff;
+}
+.nav-logo svg { width: 1rem; height: 1rem; }
+.nav-version {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+}
+.nav-links { display: flex; align-items: center; gap: 1.25rem; }
+.nav-links a {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.nav-links a:hover { color: var(--ink); }
+.nav-links .gh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.55rem;
+  padding: 0.35rem 0.7rem;
+  color: var(--ink);
+}
+.nav-links .gh:hover { border-color: var(--accent); color: var(--accent-text); }
+.nav-links .gh svg { width: 1rem; height: 1rem; fill: currentColor; }
+@media (max-width: 720px) {
+  .nav-links a:not(.gh) { display: none; }
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 5rem 0 4.5rem;
+  background:
+    radial-gradient(ellipse 55% 45% at 72% 8%, var(--accent-soft), transparent 70%),
+    var(--bg);
+}
+/* blueprint graph grid, fading out towards the fold */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, black, transparent 82%);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 82%);
+  pointer-events: none;
+}
+.hero-mark {
+  position: absolute;
+  top: 46%;
+  right: -8rem;
+  width: 36rem;
+  height: 36rem;
+  transform: translateY(-50%);
+  color: var(--accent);
+  opacity: 0.07;
+  pointer-events: none;
+}
+@media (max-width: 1000px) { .hero-mark { display: none; } }
+.hero-inner { position: relative; max-width: 46rem; margin: 0; }
+.hero-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  color: var(--accent-text);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.hero-kicker svg { width: 0.9rem; height: 0.9rem; }
+.hero h1 {
+  font-size: clamp(2.1rem, 6vw, 3.9rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+/* the product's own gesture, applied to the headline: a selected element
+   with an inspector tooltip showing real, measured dimensions */
+.marked { position: relative; color: var(--accent-text); white-space: nowrap; }
+.marked::before {
+  content: "";
+  position: absolute;
+  inset: -0.04em -0.16em;
+  border: 1.5px solid var(--accent);
+  border-radius: 0.14em;
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+.marked-tip {
+  position: absolute;
+  bottom: -1.55rem;
+  left: -0.16em;
+  border-radius: 0.35rem;
+  background: var(--accent);
+  padding: 0.22rem 0.5rem;
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+  pointer-events: none;
+}
+@media (max-width: 520px) { .marked-tip { display: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .marked::before, .marked-tip { animation: mark-in 500ms ease 350ms both; }
+  @keyframes mark-in { from { opacity: 0; } }
+}
+.hero-sub {
+  margin-top: 2.4rem;
+  max-width: 38rem;
+  color: var(--muted);
+  font-size: 1.08rem;
+  line-height: 1.65;
+}
+.hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.65rem;
+  padding: 0.75rem 1.3rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary { border: 1px solid var(--accent); background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-dark); }
+.btn-ghost {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent-text); }
+.btn-ghost .copy-state { color: var(--muted); font-family: var(--sans); font-weight: 600; }
+
+/* ---------- Section headers ---------- */
+.section-head { max-width: 40rem; margin-bottom: 2.5rem; }
+.section-head h2 {
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.section-head p { margin-top: 0.75rem; color: var(--muted); font-size: 1rem; line-height: 1.65; }
+
+/* ---------- Steps: annotation pins on a hairline ---------- */
+.steps { padding: 5rem 0; border-top: 1px solid var(--line); }
+.step-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5rem;
+}
+.step {
+  position: relative;
+  border-top: 1px solid var(--line-strong);
+  padding-top: 1.5rem;
+}
+.pin {
+  position: absolute;
+  top: -0.85rem;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 0 0 4px var(--bg);
+}
+.step h3 { font-size: 1.1rem; font-weight: 750; }
+.step p { margin-top: 0.5rem; color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+@media (max-width: 820px) {
+  .step-grid { grid-template-columns: 1fr; gap: 2.25rem; }
+}
+
+/* ---------- Demo ---------- */
+.demo { padding: 5rem 0; border-top: 1px solid var(--line); background: var(--bg-soft); }
+.demo-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.85rem;
+  background: var(--surface);
+  padding: 0.9rem 1.1rem;
+  box-shadow: 0 8px 24px rgba(0, 88, 208, 0.08);
+}
+.demo-hint svg { flex: none; width: 1.15rem; height: 1.15rem; margin-top: 0.1rem; color: var(--accent); }
+.demo-hint p { font-size: 0.9rem; line-height: 1.55; color: var(--ink); }
+.demo-hint strong { color: var(--accent-text); }
+
+/* the mock app below is a depiction of someone else's product, so it
+   stays in the light theme regardless of page color scheme */
+.browser {
+  --ink: #0b1220;
+  --muted: #506070;
+  --line: rgba(0, 54, 128, 0.14);
+  --line-strong: rgba(0, 54, 128, 0.24);
+  --bg-soft: #f4f7fc;
+  --accent-soft: rgba(0, 88, 208, 0.12);
+  --accent-dark: #003f99;
+  --accent-text: #0058d0;
+  color: #0b1220;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: 0 24px 64px var(--shadow);
+}
+.browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-bottom: 1px solid var(--line);
+  background: #eef2f8;
+  padding: 0.6rem 0.9rem;
+}
+.dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; }
+.dot.red { background: #ff5f57; } .dot.yellow { background: #febc2e; } .dot.green { background: #28c840; }
+.browser-url {
+  margin-left: 0.6rem;
+  flex: 1;
+  max-width: 22rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  padding: 0.2rem 0.85rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.browser-viewport { overflow-x: auto; background: #e9eef6; }
+
+/* --- Mock app --- */
+.app { min-width: 700px; font-size: 14px; }
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  padding: 0.7rem 1.25rem;
+}
+.app-brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 800; letter-spacing: -0.01em; }
+.app-logo { width: 1.2rem; height: 1.2rem; border-radius: 0.35rem; background: var(--accent); }
+.app-nav { display: flex; gap: 0.25rem; }
+.app-nav a {
+  border-radius: 0.45rem;
+  padding: 0.3rem 0.65rem;
+  color: var(--muted);
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.app-nav a:hover { background: var(--bg-soft); color: var(--ink); }
+.app-nav a.active { background: var(--accent-soft); color: var(--accent-dark); }
+.app-actions { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
+.app-search {
+  width: 11rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.5rem;
+  background: var(--bg-soft);
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--ink);
+  outline: none;
+}
+.app-search:focus { border-color: var(--accent); background: #fff; }
+.app-avatar {
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--accent-dark);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+.app-main { padding: 1.25rem; display: grid; gap: 1rem; }
+.app-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.app-title-row h2 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; }
+.app-sub { margin-top: 0.15rem; color: var(--muted); font-size: 0.78rem; }
+.app-title-actions { display: flex; gap: 0.5rem; }
+.btn-export {
+  border: 1px solid #15803d;
+  border-radius: 0.55rem;
+  background: #16a34a;
+  padding: 0.45rem 0.9rem;
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-primary-sm {
+  border: 1px solid var(--accent);
+  border-radius: 0.55rem;
+  background: var(--accent);
+  padding: 0.45rem 0.9rem;
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-primary-sm:hover { background: var(--accent-dark); }
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.stat-card {
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 1rem 1.1rem;
+}
+.stat-label { color: var(--muted); font-size: 0.74rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-value { margin-top: 0.3rem; font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; }
+.stat-delta { margin-top: 0.2rem; font-size: 0.74rem; font-weight: 650; }
+.stat-delta.up { color: #087f5b; }
+.stat-delta.misleading { color: #b42318; } /* intentionally wrong: positive number in red */
+.card {
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 1.1rem 1.25rem;
+}
+.card h3 { font-size: 0.95rem; font-weight: 750; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.card-note { color: #b6c2d2; font-size: 0.68rem; } /* intentionally low contrast */
+.chart { display: flex; align-items: flex-end; gap: 0.75rem; height: 9rem; margin-top: 1rem; }
+.chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; height: 100%; justify-content: flex-end; }
+.chart-bar {
+  width: 100%;
+  max-width: 2.6rem;
+  border-radius: 0.3rem 0.3rem 0 0;
+  background: linear-gradient(to top, var(--accent), #3b82f6);
+}
+.chart-x { color: var(--muted); font-size: 0.68rem; font-family: var(--mono); }
+.app-table { width: 100%; margin-top: 0.9rem; border-collapse: collapse; }
+.app-table th, .app-table td {
+  border-top: 1px solid var(--line);
+  padding: 0.55rem 0.4rem;
+  text-align: left;
+  font-size: 0.82rem;
+}
+.app-table th { border-top: 0; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.app-table td em { display: block; color: var(--muted); font-size: 0.72rem; font-style: normal; }
+.badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.12rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.badge-pro { background: var(--accent-soft); color: var(--accent-dark); }
+.badge-free { background: #eef1f6; color: var(--muted); }
+.badge-active { background: #e6f6f0; color: #087f5b; }
+.badge-pending { background: #fffdf0; color: #e3cf6a; } /* intentionally low contrast */
+.invite-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-top: 0.9rem; }
+.invite-row input, .invite-row select {
+  border: 1px solid var(--line-strong);
+  border-radius: 0.5rem;
+  background: #fff;
+  padding: 0.45rem 0.7rem;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--ink);
+  outline: none;
+}
+.invite-row input { flex: 1; min-width: 12rem; }
+.invite-row input:focus, .invite-row select:focus { border-color: var(--accent); }
+
+/* ---------- Output ---------- */
+.output { padding: 5rem 0; border-top: 1px solid var(--line); }
+.output-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 2.5rem; align-items: center; }
+.output-copy h2 {
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.output-copy p { color: var(--muted); font-size: 0.95rem; line-height: 1.65; margin-top: 0.75rem; }
+.codeblock {
+  overflow: hidden;
+  border-radius: 0.85rem;
+  background: var(--code-bg);
+  box-shadow: 0 20px 50px var(--shadow);
+}
+.codeblock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.55rem 0.9rem;
+}
+.codeblock-title { color: #8fa3bf; font-family: var(--mono); font-size: 0.7rem; }
+.codeblock pre {
+  margin: 0;
+  overflow-x: auto;
+  padding: 1rem 1.1rem;
+  color: #dbe6f5;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  line-height: 1.7;
+}
+.tok-k { color: #7cb3ff; }
+.tok-s { color: #8fd6a8; }
+.tok-c { color: #5c7089; }
+.tok-h { color: #ffd479; font-weight: 700; }
+@media (max-width: 900px) { .output-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Features: asymmetric bento ---------- */
+.features { padding: 5rem 0; border-top: 1px solid var(--line); background: var(--bg-soft); }
+.feature-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1rem; }
+.feature {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+  padding: 1.4rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.feature:hover { border-color: var(--line-strong); box-shadow: 0 10px 30px var(--shadow); }
+.f-prompt { grid-column: span 7; }
+.f-inspector { grid-column: span 5; }
+.f-sm { grid-column: span 3; }
+@media (max-width: 980px) {
+  .f-prompt, .f-inspector { grid-column: span 12; }
+  .f-sm { grid-column: span 6; }
+}
+@media (max-width: 560px) {
+  .f-sm { grid-column: span 12; }
+}
+.feature-icon {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.6rem;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.feature-icon svg { width: 1.1rem; height: 1.1rem; }
+.feature h3 { margin-top: 0.9rem; font-size: 0.98rem; font-weight: 750; }
+.feature p { margin-top: 0.4rem; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+
+/* real output excerpt inside the "Copy as prompt" cell */
+.mini-code {
+  margin-top: 1.1rem;
+  border-radius: 0.6rem;
+  background: var(--code-bg);
+  padding: 0.8rem 0.95rem;
+  color: #dbe6f5;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1.75;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* real property diff inside the "Property inspector" cell */
+.diff { margin: 1.1rem 0 0; padding: 0; list-style: none; font-family: var(--mono); font-size: 0.74rem; }
+.diff li { display: flex; align-items: baseline; gap: 0.55rem; padding: 0.45rem 0; }
+.diff li + li { border-top: 1px solid var(--line); }
+.diff-prop { color: var(--ink); font-weight: 700; }
+.diff-from { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.diff-arrow { color: var(--muted); }
+.diff-to { color: var(--accent-text); font-weight: 700; }
+
+/* ---------- Install ---------- */
+.install { padding: 5rem 0; border-top: 1px solid var(--line); }
+.install-copy { max-width: 40rem; }
+.install-copy h2 {
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.install-copy p { margin-top: 0.75rem; color: var(--muted); font-size: 0.95rem; line-height: 1.65; }
+.install .codeblock { margin-top: 2rem; max-width: 44rem; }
+
+/* ---------- Footer ---------- */
+.footer { border-top: 1px solid var(--line); padding: 2rem 0 2.5rem; }
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.footer-links { display: flex; gap: 1.25rem; }
+.footer-links a { color: var(--muted); font-weight: 600; }
+.footer-links a:hover { color: var(--accent-text); }
+
+/* ---------- Launcher hint ---------- */
+.launcher-hint {
+  position: fixed;
+  z-index: 9998;
+  top: 50%;
+  right: 7.5rem;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 0.45rem 0.9rem;
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  font-weight: 700;
+  box-shadow: 0 10px 30px rgba(0, 88, 208, 0.18);
+  pointer-events: none;
+  animation: hint-pulse 2.2s ease-in-out infinite;
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+.launcher-hint svg { width: 0.95rem; height: 0.95rem; }
+.launcher-hint.is-hidden { opacity: 0; transform: translateY(-50%) translateX(0.5rem); }
+@keyframes hint-pulse {
+  0%, 100% { box-shadow: 0 10px 30px rgba(0, 88, 208, 0.18), 0 0 0 0 rgba(0, 88, 208, 0.25); }
+  50% { box-shadow: 0 10px 30px rgba(0, 88, 208, 0.18), 0 0 0 8px rgba(0, 88, 208, 0); }
+}
+@media (max-width: 900px) { .launcher-hint { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .launcher-hint { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="nav-brand" href="#top">
+      <span class="nav-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+      </span>
+      patch-mark
+      <span class="nav-version">v0.1.0</span>
+    </a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#demo">Demo</a>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a class="gh" href="https://github.com/LKRCharon/patch-mark" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <svg class="hero-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+  <div class="wrap hero-inner">
+    <p class="hero-kicker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+      UI feedback for AI coding agents
+    </p>
+    <h1>Stop describing UI bugs.<br />Start <span class="marked">pointing<span class="marked-tip" aria-hidden="true">em</span></span> at them.</h1>
+    <p class="hero-sub">
+      A tiny Web Component that turns pointing at UI into machine-readable prompts:
+      selector, position, visible text, exact CSS property changes.
+    </p>
+    <div class="hero-ctas">
+      <a class="btn btn-primary" href="#demo">Try the live demo</a>
+      <button class="btn btn-ghost" type="button" data-copy-install>
+        npm install patch-mark
+        <span class="copy-state">Copy</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="steps" id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Three steps from “that looks wrong” to a fixed commit</h2>
+    </div>
+    <div class="step-grid">
+      <div class="step">
+        <span class="pin">1</span>
+        <h3>Pick</h3>
+        <p>Click the floating <code>Annotate</code> button, hover any element to inspect its tag and dimensions, then click to select it. Esc cancels anytime.</p>
+      </div>
+      <div class="step">
+        <span class="pin">2</span>
+        <h3>Comment</h3>
+        <p>Write feedback in plain language. Need precision? Open the property inspector and type exact values like <code>font-size: 12px → 14px</code> instead of describing them.</p>
+      </div>
+      <div class="step">
+        <span class="pin">3</span>
+        <h3>Hand off</h3>
+        <p>Hit <code>Copy as prompt</code> and paste into Cursor, Claude Code, or any agent. Or stream annotations to your backend with the store adapter and let the agent pick them up itself.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="demo" id="demo">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>This page is the playground</h2>
+      <p>The mock dashboard below ships with patch-mark already attached. Look for the floating button on the right edge of your screen.</p>
+    </div>
+
+    <div class="demo-hint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p><strong>Try it now:</strong> click the <strong>Annotate</strong> button on the right edge of this page, then click any element inside the mock app below. A few rough edges were left in on purpose. See if you can spot them.</p>
+    </div>
+
+    <div class="browser">
+      <div class="browser-bar">
+        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+        <span class="browser-url">https://preview.trellis.dev/dashboard</span>
+      </div>
+      <div class="browser-viewport">
+        <div class="app">
+          <header class="app-header">
+            <div class="app-brand"><span class="app-logo"></span> Trellis</div>
+            <nav class="app-nav">
+              <a class="active">Overview</a>
+              <a>Reports</a>
+              <a>Customers</a>
+              <a>Settings</a>
+            </nav>
+            <div class="app-actions">
+              <input class="app-search" placeholder="Search…" />
+              <span class="app-avatar">LK</span>
+            </div>
+          </header>
+          <main class="app-main">
+            <div class="app-title-row">
+              <div>
+                <h2>Overview</h2>
+                <p class="app-sub">Last 30 days · updated just now</p>
+              </div>
+              <div class="app-title-actions">
+                <button class="btn-export" type="button">Export</button>
+                <button class="btn-primary-sm" type="button">New report</button>
+              </div>
+            </div>
+
+            <div class="stat-grid">
+              <div class="stat-card">
+                <p class="stat-label">MRR</p>
+                <p class="stat-value">$48,230</p>
+                <p class="stat-delta misleading">+12.4% vs last month</p>
+              </div>
+              <div class="stat-card">
+                <p class="stat-label">Active users</p>
+                <p class="stat-value">8,429</p>
+                <p class="stat-delta up">+3.1% vs last month</p>
+              </div>
+              <div class="stat-card">
+                <p class="stat-label">Churn</p>
+                <p class="stat-value">2.4%</p>
+                <p class="stat-delta up">-0.8% vs last month</p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>Weekly revenue</h3>
+                <span class="card-note">hover bars for exact values</span>
+              </div>
+              <div class="chart">
+                <div class="chart-col"><div class="chart-bar" style="height: 42%"></div><span class="chart-x">Mon</span></div>
+                <div class="chart-col"><div class="chart-bar" style="height: 58%"></div><span class="chart-x">Tue</span></div>
+                <div class="chart-col"><div class="chart-bar" style="height: 49%"></div><span class="chart-x">Wed</span></div>
+                <div class="chart-col"><div class="chart-bar" style="height: 71%"></div><span class="chart-x">Thu</span></div>
+                <div class="chart-col"><div class="chart-bar" style="height: 63%"></div><span class="chart-x">Fri</span></div>
+                <div class="chart-col"><div class="chart-bar" style="height: 86%"></div><span class="chart-x">Sat</span></div>
+                <div class="chart-col"><div class="chart-bar" style="height: 78%"></div><span class="chart-x">Sun</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>Latest signups</h3>
+              <table class="app-table">
+                <thead>
+                  <tr><th>Customer</th><th>Plan</th><th>Status</th><th>MRR</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Ada Lovelace<em>ada@analytical.io</em></td>
+                    <td><span class="badge badge-pro">Pro</span></td>
+                    <td><span class="badge badge-active">Active</span></td>
+                    <td>$249</td>
+                  </tr>
+                  <tr>
+                    <td>Alan Turing<em>alan@enigma.dev</em></td>
+                    <td><span class="badge badge-pro">Pro</span></td>
+                    <td><span class="badge badge-pending">Pending</span></td>
+                    <td>$249</td>
+                  </tr>
+                  <tr>
+                    <td>Grace Hopper<em>grace@navy.mil</em></td>
+                    <td><span class="badge badge-free">Free</span></td>
+                    <td><span class="badge badge-active">Active</span></td>
+                    <td>$0</td>
+                  </tr>
+                  <tr>
+                    <td>Margaret Hamilton<em>m.hamilton@apollo.io</em></td>
+                    <td><span class="badge badge-pro">Pro</span></td>
+                    <td><span class="badge badge-active">Active</span></td>
+                    <td>$249</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>Invite a teammate</h3>
+                <span class="card-note">they will receive a magic link</span>
+              </div>
+              <div class="invite-row">
+                <input type="email" placeholder="teammate@trellis.dev" aria-label="Teammate email" />
+                <select aria-label="Role">
+                  <option>Member</option>
+                  <option>Admin</option>
+                  <option>Viewer</option>
+                </select>
+                <button class="btn-primary-sm" type="button">Send invite</button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="output" id="output">
+  <div class="wrap output-grid">
+    <div class="output-copy">
+      <h2>What your agent receives</h2>
+      <p>Every annotation becomes a self-contained Markdown prompt. The agent doesn’t guess which button you meant. It gets the exact <code>selector</code>, the rendered text, the position, and any property changes you typed in the inspector.</p>
+      <p>Annotations persist to <code>localStorage</code> by default, or stream to your own endpoint via <code>createFetchStore</code>. That’s how the feedback loop closes without copy-pasting.</p>
+    </div>
+    <div class="codeblock">
+      <div class="codeblock-head">
+        <span class="codeblock-title">annotation.md</span>
+      </div>
+<pre><span class="tok-h">## UI Feedback</span>
+
+- <span class="tok-k">**Element:**</span> `<span class="tok-s">button</span>`
+- <span class="tok-k">**Selector:**</span> `<span class="tok-s">div.app-title-actions &gt; button.btn-export</span>`
+- <span class="tok-k">**Name:**</span> button.btn-export
+- <span class="tok-k">**Text:**</span> "Export"
+- <span class="tok-k">**Position:**</span> top=612, left=944, 86x36
+- <span class="tok-k">**Page:**</span> /
+- <span class="tok-k">**Feedback:**</span> This button is green while every other action
+  uses the brand blue. Make it consistent.
+- <span class="tok-k">**Property Changes:**</span>
+  - `<span class="tok-s">background-color</span>`: rgb(22, 163, 74) → rgb(0, 88, 208)
+- <span class="tok-k">**Status:**</span> open</pre>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Small surface, sharp edges</h2>
+      <p>Everything you need to close the feedback loop between human and agent, and nothing you don’t.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature f-prompt">
+        <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+        </span>
+        <h3>Copy as prompt</h3>
+        <p>One click exports structured Markdown: selector, position, text, and your feedback. Paste it into any coding agent.</p>
+        <div class="mini-code">- **Selector:** div.app-title-actions &gt; button.btn-export
+- **Feedback:** This button is green while every other
+  action uses the brand blue. Make it consistent.</div>
+      </div>
+      <div class="feature f-inspector">
+        <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+        </span>
+        <h3>Property inspector</h3>
+        <p>Capture exact CSS changes as <code>from → to</code> pairs, so “make it bigger” becomes a precise instruction.</p>
+        <ul class="diff">
+          <li><span class="diff-prop">font-size</span><span class="diff-from">12px</span><span class="diff-arrow">→</span><span class="diff-to">14px</span></li>
+          <li><span class="diff-prop">background-color</span><span class="diff-from">rgb(22, 163, 74)</span><span class="diff-arrow">→</span><span class="diff-to">rgb(0, 88, 208)</span></li>
+        </ul>
+      </div>
+      <div class="feature f-sm">
+        <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
+        </span>
+        <h3>Zero dependencies</h3>
+        <p>A single ESM file, ~11 KB gzipped. No runtime, no framework lock-in. Drop it into any page with one <code>script</code> tag.</p>
+      </div>
+      <div class="feature f-sm">
+        <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>
+        <h3>Shadow DOM isolation</h3>
+        <p>Component styles never leak into your app, and your app’s CSS never breaks the tool. Safe to mount on any page.</p>
+      </div>
+      <div class="feature f-sm">
+        <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        </span>
+        <h3>Store adapter API</h3>
+        <p><code>localStorage</code> out of the box. Implement four methods to stream annotations anywhere: REST, WebSocket, files.</p>
+      </div>
+      <div class="feature f-sm">
+        <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </span>
+        <h3>Resolve lifecycle</h3>
+        <p>Annotations carry <code>open / resolved</code> status. The agent marks items done after fixing them, and you watch the loop close in the list panel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="install" id="install">
+  <div class="wrap">
+    <div class="install-copy">
+      <h2>Two lines, any page</h2>
+      <p>
+        Load the script, drop the element, done. Annotations persist locally with zero config.
+        Connect a backend when your agent should consume them directly. The README covers the
+        store adapter contract and React / Vue / Next.js recipes.
+      </p>
+    </div>
+    <div class="codeblock">
+      <div class="codeblock-head"><span class="codeblock-title">index.html</span></div>
+<pre><span class="tok-c">&lt;!-- 1. Load the component (registers &lt;patch-mark&gt;) --&gt;</span>
+&lt;<span class="tok-k">script</span> <span class="tok-h">type</span>=<span class="tok-s">"module"</span> <span class="tok-h">src</span>=<span class="tok-s">"https://unpkg.com/patch-mark"</span>&gt;&lt;/<span class="tok-k">script</span>&gt;
+
+<span class="tok-c">&lt;!-- 2. Drop it anywhere on the page --&gt;</span>
+&lt;<span class="tok-k">patch-mark</span>&gt;&lt;/<span class="tok-k">patch-mark</span>&gt;</pre>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <span>MIT License · patch-mark</span>
+    <div class="footer-links">
+      <a href="https://github.com/LKRCharon/patch-mark" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://www.npmjs.com/package/patch-mark" target="_blank" rel="noopener">npm</a>
+      <a href="#top">Back to top</a>
+    </div>
+  </div>
+</footer>
+
+<div class="launcher-hint" aria-hidden="true">
+  Try the picker
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+</div>
+
+<patch-mark visible></patch-mark>
+
+<script type="module" src="dist/patch-mark.js"></script>
+<script type="module">
+  // Point the UI at English for this demo: labels are fully customizable.
+  const tool = document.querySelector('patch-mark');
+  customElements.whenDefined('patch-mark').then(() => {
+    tool.labels = {
+      picker: 'Annotate',
+      pickerHint: 'Hover to inspect an element, click to select it',
+      compose: 'Feedback',
+      targetLabel: 'Target element',
+      placeholder: 'Write feedback for the agent…',
+      send: 'Send',
+      sending: 'Sending…',
+      reselect: 'Reselect',
+      list: 'Notes',
+      locate: 'Locate',
+      close: 'Close',
+      empty: 'No annotations on this page yet.',
+      loading: 'Loading…',
+      notFound: 'Element not found. The page may have changed.',
+      contentPrefix: 'Content: ',
+      copyAsPrompt: 'Copy as prompt',
+      copied: 'Copied',
+      resolve: 'Resolve',
+      resolved: 'Resolved',
+      properties: 'Props',
+      propertiesHint: 'Edit values to give the agent exact instructions',
+      dragLabel: 'Drag to reorder',
+    };
+    tool.close(); // re-render the launcher with the new labels
+  });
+
+  // The hero headline carries the product's own gesture: the word "pointing"
+  // is rendered as a selected element, and the tooltip shows its real,
+  // measured dimensions, exactly like the hover inspector does.
+  const marked = document.querySelector('.marked');
+  const markedTip = marked?.querySelector('.marked-tip');
+  if (marked && markedTip) {
+    const measure = () => {
+      const r = marked.getBoundingClientRect();
+      markedTip.textContent = `em ${Math.round(r.width)} × ${Math.round(r.height)}`;
+    };
+    measure();
+    new ResizeObserver(measure).observe(marked);
+    document.fonts?.ready?.then(measure);
+  }
+
+  // Dismiss the floating hint once the tool is used (or after a while).
+  const hint = document.querySelector('.launcher-hint');
+  document.addEventListener('click', (e) => {
+    if (e.target instanceof Element && e.target.closest('patch-mark')) {
+      hint?.classList.add('is-hidden');
+    }
+  }, true);
+  window.setTimeout(() => hint?.classList.add('is-hidden'), 20000);
+
+  // Copy the install command.
+  const copyBtn = document.querySelector('[data-copy-install]');
+  copyBtn?.addEventListener('click', async () => {
+    const state = copyBtn.querySelector('.copy-state');
+    try {
+      await navigator.clipboard.writeText('npm install patch-mark');
+      if (state) state.textContent = 'Copied';
+    } catch {
+      if (state) state.textContent = 'Select + Ctrl+C';
+    }
+    window.setTimeout(() => { if (state) state.textContent = 'Copy'; }, 1500);
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,40 @@
+{
+  "name": "patch-mark",
+  "version": "0.1.0",
+  "description": "UI feedback for AI coding agents — point at elements, get structured context for your agent.",
+  "type": "module",
+  "main": "./dist/patch-mark.js",
+  "module": "./dist/patch-mark.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/patch-mark.js",
+      "default": "./dist/patch-mark.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --emitDeclarationOnly && esbuild src/index.ts --bundle --format=esm --outfile=dist/patch-mark.js --minify",
+    "build:dev": "tsc --emitDeclarationOnly && esbuild src/index.ts --bundle --format=esm --outfile=dist/patch-mark.js --sourcemap",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "annotation",
+    "patch-mark",
+    "web-components",
+    "custom-elements",
+    "ai-coding-agent",
+    "ui-feedback",
+    "dom",
+    "vibecoding"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0"
+  }
+}
