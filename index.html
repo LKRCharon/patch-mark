@@ -171,7 +171,8 @@ code {
   pointer-events: none;
 }
 @media (max-width: 1000px) { .hero-mark { display: none; } }
-.hero-inner { position: relative; max-width: 46rem; margin: 0; }
+.hero-inner { position: relative; }
+.hero-inner > * { max-width: 46rem; }
 .hero-kicker {
   display: flex;
   align-items: center;
@@ -262,13 +263,13 @@ code {
 .btn-ghost .copy-state { color: var(--muted); font-family: var(--sans); font-weight: 600; }
 
 /* ---------- Section headers ---------- */
-.section-head { max-width: 40rem; margin-bottom: 2.5rem; }
+.section-head { margin-bottom: 2.5rem; }
 .section-head h2 {
-  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  font-size: clamp(1.5rem, 3.1vw, 2.2rem);
   font-weight: 800;
   letter-spacing: -0.02em;
 }
-.section-head p { margin-top: 0.75rem; color: var(--muted); font-size: 1rem; line-height: 1.65; }
+.section-head p { max-width: 40rem; margin-top: 0.75rem; color: var(--muted); font-size: 1rem; line-height: 1.65; }
 
 /* ---------- Steps: annotation pins on a hairline ---------- */
 .steps { padding: 5rem 0; border-top: 1px solid var(--line); }
