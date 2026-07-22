@@ -79,6 +79,8 @@ export type AnnotationLabels = {
   colorLabel?: string;
   fontLabel?: string;
   dragLabel?: string;
+  expandLabel?: string;
+  shrinkLabel?: string;
 };
 
 export type AnnotationTheme = {

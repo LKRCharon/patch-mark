@@ -260,7 +260,10 @@ code {
   font-size: 0.85rem;
 }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent-text); }
-.btn-ghost .copy-state { color: var(--muted); font-family: var(--sans); font-weight: 600; }
+.btn-ghost .copy-state { display: inline-flex; align-items: center; color: var(--muted); }
+.btn-ghost .copy-state svg { width: 0.9rem; height: 0.9rem; }
+.btn-ghost:hover .copy-state { color: var(--accent-text); }
+.btn-ghost .copy-state.is-copied { color: var(--success, #087f5b); }
 
 /* ---------- Section headers ---------- */
 .section-head { margin-bottom: 2.5rem; }
@@ -702,7 +705,7 @@ code {
       <a class="btn btn-primary" href="#demo">Try the live demo</a>
       <button class="btn btn-ghost" type="button" data-copy-install>
         npm install patch-mark
-        <span class="copy-state">Copy</span>
+        <span class="copy-state" aria-label="Copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>
       </button>
     </div>
   </div>
@@ -1053,15 +1056,22 @@ code {
 
   // Copy the install command.
   const copyBtn = document.querySelector('[data-copy-install]');
+  const COPY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
   copyBtn?.addEventListener('click', async () => {
     const state = copyBtn.querySelector('.copy-state');
+    if (!state) return;
     try {
       await navigator.clipboard.writeText('npm install patch-mark');
-      if (state) state.textContent = 'Copied';
+      state.innerHTML = CHECK_ICON;
+      state.classList.add('is-copied');
     } catch {
-      if (state) state.textContent = 'Select + Ctrl+C';
+      state.textContent = 'Select + Ctrl+C';
     }
-    window.setTimeout(() => { if (state) state.textContent = 'Copy'; }, 1500);
+    window.setTimeout(() => {
+      state.innerHTML = COPY_ICON;
+      state.classList.remove('is-copied');
+    }, 1500);
   });
 </script>
 

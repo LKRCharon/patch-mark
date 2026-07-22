@@ -392,6 +392,44 @@ function buildShadowStyles(prefix: string): string {
   color: var(--${cv}-success);
 }
 
+/* ---- Selection level navigation ---- */
+.${prefix}-select-nav {
+  display: inline-flex;
+  flex: none;
+  gap: 0.15rem;
+}
+
+.${prefix}-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--${cv}-line-strong);
+  border-radius: 0.4rem;
+  background: transparent;
+  padding: 0;
+  color: var(--${cv}-muted);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.${prefix}-nav-btn:hover:not(:disabled) {
+  border-color: var(--${cv}-accent);
+  background: var(--${cv}-accent-soft);
+  color: var(--${cv}-accent-dark);
+}
+
+.${prefix}-nav-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.${prefix}-nav-btn svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
 /* ---- Property panel ---- */
 .${prefix}-prop-toggle {
   display: inline-flex;
@@ -714,6 +752,13 @@ function buildShadowStyles(prefix: string): string {
   border: 2px solid var(--${cv}-accent);
   background: var(--${cv}-accent-soft);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85) inset;
+}
+
+.${prefix}-highlight.is-selected {
+  background: transparent;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.85) inset,
+    0 0 0 4px color-mix(in srgb, var(--${cv}-accent) 18%, transparent);
 }
 
 .${prefix}-element-label {

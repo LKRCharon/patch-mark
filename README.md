@@ -1,5 +1,17 @@
 # patch-mark
 
+<p>
+  <a href="https://www.npmjs.com/package/patch-mark"><img alt="npm version" src="https://img.shields.io/npm/v/patch-mark?style=flat-square&color=0058d0&label=npm"></a>
+  <a href="https://www.npmjs.com/package/patch-mark"><img alt="npm downloads" src="https://img.shields.io/npm/dm/patch-mark?style=flat-square&color=0058d0"></a>
+  <a href="https://bundlephobia.com/package/patch-mark"><img alt="bundle size" src="https://img.shields.io/bundlephobia/minzip/patch-mark?style=flat-square&color=0058d0&label=gzip"></a>
+  <img alt="zero dependencies" src="https://img.shields.io/badge/dependencies-0-success?style=flat-square">
+  <img alt="types included" src="https://img.shields.io/badge/types-included-3178c6?style=flat-square&logo=typescript&logoColor=white">
+  <a href="https://github.com/LKRCharon/patch-mark/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
+  <img alt="web component" src="https://img.shields.io/badge/%3Cpatch--mark%3E-web%20component-e34f26?style=flat-square&logo=html5&logoColor=white">
+</p>
+
+> **annotations that compile to prompts**
+
 UI feedback for AI coding agents.
 
 Point at an element on a preview page, write a comment, and your coding agent gets the structured context it needs to fix the code — CSS selector, element name, position, visible text, and the feedback message. No more "the button on the left" screenshots.
@@ -37,6 +49,31 @@ That's it. Click the floating "批注" button, hover over any element, click to 
 ```
 
 > **Production tip:** For production use, self-host the script or add [SRI integrity](https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity) to the CDN tag to protect against supply-chain attacks.
+
+### CDN (no install, no build step)
+
+The package is mirrored on all major public CDNs the moment it's published. Drop one line into any HTML page — no npm, no bundler:
+
+```html
+<!-- unpkg, always latest -->
+<script type="module" src="https://unpkg.com/patch-mark"></script>
+
+<!-- jsdelivr, version pinned (recommended for anything shared) -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/patch-mark@0.2.0"></script>
+```
+
+Can't use `type="module"`? (CMS code boxes, tag managers, legacy pipelines) — use the IIFE build, which registers the element and exposes a `PatchMark` global:
+
+```html
+<script src="https://unpkg.com/patch-mark/dist/patch-mark.iife.js"></script>
+<patch-mark visible></patch-mark>
+<script>
+  // Programmatic API is available on the global:
+  // PatchMark.createFetchStore, PatchMark.formatAnnotationsAsPrompt, ...
+</script>
+```
+
+This makes the "collect feedback on staging" workflow one paste away in any project, regardless of its tech stack.
 
 ### Connect to a backend (agent consumption channel)
 
@@ -359,7 +396,8 @@ No polyfills needed. Shadow DOM, Custom Elements, and CSS custom properties are 
 ```bash
 npm install
 npm run build
-# Output: dist/patch-mark.js (ESM, ~11 KB gzip, zero dependencies)
+# Output: dist/patch-mark.js       (ESM,  ~11 KB gzip, zero dependencies)
+#         dist/patch-mark.iife.js (IIFE, for plain <script> tags)
 ```
 
 ## License

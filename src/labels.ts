@@ -25,4 +25,6 @@ export const defaultLabels: AnnotationLabels = {
   colorLabel: '颜色',
   fontLabel: '字体',
   dragLabel: '拖动排序',
+  expandLabel: '扩展到父级',
+  shrinkLabel: '收缩到子级',
 };

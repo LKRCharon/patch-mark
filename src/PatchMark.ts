@@ -47,6 +47,8 @@ const ICONS = {
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
   copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
   grip: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>',
+  chevronUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>',
+  chevronDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
 };
 
 function rgbToHex(color: string): string {
@@ -101,6 +103,7 @@ export class PatchMark extends BaseHTMLElement {
   private statusType: 'error' | 'success' | null = null;
   private locatedTarget: PickerTarget | null = null;
   private selectedElement: HTMLElement | null = null;
+  private selectionPath: HTMLElement[] = [];
   private showProperties = false;
   private propertyChanges: Record<string, { from: string; to: string }> = {};
 
@@ -216,6 +219,7 @@ export class PatchMark extends BaseHTMLElement {
 
   disconnectedCallback(): void {
     this.cleanupPicking();
+    this.cleanupComposeTracking();
     this.removeKeyDownListener();
     window.clearTimeout(this.locateTimeout);
     if (this.rafId !== undefined) window.cancelAnimationFrame(this.rafId);
@@ -245,6 +249,7 @@ export class PatchMark extends BaseHTMLElement {
     this.showProperties = false;
     this.propertyChanges = {};
     this.cleanupPicking();
+    this.cleanupComposeTracking();
     this.updateOverlay();
     this.updatePanel();
   }
@@ -260,12 +265,16 @@ export class PatchMark extends BaseHTMLElement {
     this.statusType = null;
     this.showProperties = false;
     this.propertyChanges = {};
+    this.cleanupComposeTracking();
     this.setupPicking();
+    this.updateOverlay();
     this.updatePanel();
   }
 
   private async openList(): Promise<void> {
     this.mode = 'list';
+    this.cleanupComposeTracking();
+    this.updateOverlay();
     this.updatePanel();
     await this.loadAnnotations();
   }
@@ -337,11 +346,13 @@ export class PatchMark extends BaseHTMLElement {
     this.selectedTarget = toElementTarget(target);
     const element = document.elementFromPoint(e.clientX, e.clientY);
     this.selectedElement = element instanceof HTMLElement ? element : null;
+    this.selectionPath = [];
     this.hoveredTarget = null;
     this.showProperties = false;
     this.propertyChanges = {};
     this.mode = 'compose';
     this.cleanupPicking();
+    this.setupComposeTracking();
     this.updateOverlay();
     this.updatePanel();
 
@@ -364,6 +375,64 @@ export class PatchMark extends BaseHTMLElement {
       }
     });
   };
+
+  // Keep the selected element's frame in sync with scroll/resize while composing
+  private refreshSelected = (): void => {
+    if (this.rafId !== undefined) window.cancelAnimationFrame(this.rafId);
+    this.rafId = window.requestAnimationFrame(() => this.updateOverlay());
+  };
+
+  private setupComposeTracking(): void {
+    window.addEventListener('scroll', this.refreshSelected, true);
+    window.addEventListener('resize', this.refreshSelected);
+  }
+
+  private cleanupComposeTracking(): void {
+    window.removeEventListener('scroll', this.refreshSelected, true);
+    window.removeEventListener('resize', this.refreshSelected);
+  }
+
+  // ---- Selection level navigation (expand to parent / shrink to child) ----
+
+  private canExpandSelection(): boolean {
+    const parent = this.selectedElement?.parentElement;
+    return !!parent && parent !== document.documentElement && !parent.closest(ELEMENT_TAG);
+  }
+
+  private canShrinkSelection(): boolean {
+    if (this.selectionPath.length > 0) return true;
+    const child = this.selectedElement?.firstElementChild;
+    return child instanceof HTMLElement && !child.closest(ELEMENT_TAG);
+  }
+
+  private expandSelection(): void {
+    const element = this.selectedElement;
+    if (!element || !this.canExpandSelection()) return;
+    this.selectionPath.push(element);
+    this.applySelectedElement(element.parentElement!);
+  }
+
+  private shrinkSelection(): void {
+    // Prefer retracing the path we expanded through; otherwise dive into the first child
+    const fromPath = this.selectionPath.pop();
+    if (fromPath?.isConnected) {
+      this.applySelectedElement(fromPath);
+      return;
+    }
+    const child = this.selectedElement?.firstElementChild;
+    if (child instanceof HTMLElement && !child.closest(ELEMENT_TAG)) {
+      this.applySelectedElement(child);
+    }
+  }
+
+  private applySelectedElement(element: HTMLElement): void {
+    this.selectedElement = element;
+    this.selectedTarget = describeElement(element);
+    // Property changes referred to the previous element's computed values
+    this.propertyChanges = {};
+    this.updateOverlay();
+    this.updatePanel();
+  }
 
   private removeKeyDownListener(): void {
     if (this.boundKeyDown) {
@@ -417,7 +486,10 @@ export class PatchMark extends BaseHTMLElement {
       this.annotations = [annotation, ...this.annotations];
       this.message = '';
       this.selectedTarget = null;
+      this.selectedElement = null;
       this.mode = 'list';
+      this.cleanupComposeTracking();
+      this.updateOverlay();
     } catch (error) {
       this.status = error instanceof Error ? error.message : 'Failed to submit.';
       this.statusType = 'error';
@@ -682,6 +754,12 @@ export class PatchMark extends BaseHTMLElement {
         this.showProperties = !this.showProperties;
         this.updatePanel();
         break;
+      case 'expand-selection':
+        this.expandSelection();
+        break;
+      case 'shrink-selection':
+        this.shrinkSelection();
+        break;
     }
   }
 
@@ -719,6 +797,12 @@ export class PatchMark extends BaseHTMLElement {
   private updateOverlay(): void {
     if (!this.overlayEl) return;
 
+    // While composing, keep a persistent frame on the selected element
+    if (this.mode === 'compose') {
+      this.renderSelectedOverlay();
+      return;
+    }
+
     const target = this.mode === 'picking' ? this.hoveredTarget : this.locatedTarget;
 
     if (!target) {
@@ -750,6 +834,32 @@ export class PatchMark extends BaseHTMLElement {
           <span>${escapeHtml(target.hoverInfo.fontSize)} ${escapeHtml(target.hoverInfo.fontFamily)}</span>
         </div>
         ` : ''}
+      </div>
+    `;
+  }
+
+  private renderSelectedOverlay(): void {
+    if (!this.overlayEl) return;
+
+    const element = this.selectedElement;
+    if (!element || !element.isConnected || !this.selectedTarget) {
+      this.overlayEl.style.display = 'none';
+      this.overlayEl.innerHTML = '';
+      return;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const labelTop = rect.top > 34 + 10 ? rect.top - 34 : rect.bottom + 8;
+    const labelLeft = Math.min(Math.max(rect.left, 8), window.innerWidth - 240);
+
+    this.overlayEl.style.display = '';
+    this.overlayEl.innerHTML = `
+      <div class="${CLASS_PREFIX}-highlight is-selected" style="top:${rect.top}px;left:${rect.left}px;width:${rect.width}px;height:${rect.height}px"></div>
+      <div class="${CLASS_PREFIX}-element-label" style="top:${labelTop}px;left:${labelLeft}px">
+        <div class="${CLASS_PREFIX}-label-row">
+          <strong>${escapeHtml(this.selectedTarget.name)}</strong>
+          <span>${Math.round(rect.width)} × ${Math.round(rect.height)}</span>
+        </div>
       </div>
     `;
   }
@@ -837,6 +947,14 @@ export class PatchMark extends BaseHTMLElement {
         <div class="${CLASS_PREFIX}-target">
           <span>${escapeHtml(this.labels.targetLabel)}</span>
           <strong>${escapeHtml(this.selectedTarget.name)}</strong>
+          <span class="${CLASS_PREFIX}-select-nav">
+            <button type="button" class="${CLASS_PREFIX}-nav-btn" data-action="expand-selection" title="${escapeHtml(this.labels.expandLabel ?? '扩展到父级')}" aria-label="${escapeHtml(this.labels.expandLabel ?? '扩展到父级')}" ${this.canExpandSelection() ? '' : 'disabled'}>
+              ${ICONS.chevronUp}
+            </button>
+            <button type="button" class="${CLASS_PREFIX}-nav-btn" data-action="shrink-selection" title="${escapeHtml(this.labels.shrinkLabel ?? '收缩到子级')}" aria-label="${escapeHtml(this.labels.shrinkLabel ?? '收缩到子级')}" ${this.canShrinkSelection() ? '' : 'disabled'}>
+              ${ICONS.chevronDown}
+            </button>
+          </span>
           <button type="button" class="${CLASS_PREFIX}-prop-toggle ${this.showProperties ? 'is-active' : ''}" data-action="toggle-properties">
             ${escapeHtml(toggleLabel)}${propBadge}
           </button>
