@@ -18,7 +18,7 @@ Point at an element on a preview page, write a comment, and your coding agent ge
 
 When you use an AI coding agent to build frontends (v0, bolt, Cursor, Claude, etc.), the feedback loop is broken: you see something wrong in the preview, but communicating *what* is wrong means screenshots and vague descriptions. `patch-mark` closes that gap — you point, you comment, the agent gets machine-readable context.
 
-This is not another annotation library for human review. [annotate.js](https://annotate.js.org) already won that category. `patch-mark` is specifically the **feedback channel between a human and an AI coding agent**.
+This is not another annotation library for human review: `patch-mark` is specifically the **feedback channel between a human and an AI coding agent**.
 
 ## Quick start
 
@@ -119,6 +119,24 @@ patch-mark[theme="brand"] {
   --pm-accent: #ff6d01;
 }
 ```
+
+For one-off tweaks, set the variables inline or from your own stylesheet:
+
+```html
+<patch-mark style="--pm-accent: #0a84ff"></patch-mark>
+```
+
+| Variable | Default | Controls |
+| --- | --- | --- |
+| `--pm-accent` | `#0058d0` | launcher, selection highlight, primary buttons |
+| `--pm-accent-dark` | `#003f99` | launcher gradient end, hover/active states |
+| `--pm-accent-soft` | `rgba(0, 88, 208, 0.12)` | selection fill, tinted chip backgrounds |
+| `--pm-surface-muted` | `#eaf2ff` | subtle hover surface, hint bars |
+| `--pm-line` / `--pm-line-strong` | `rgba(0, 54, 128, 0.14 / 0.24)` | hairlines and borders |
+| `--pm-panel-solid` | `#ffffff` | panel background |
+| `--pm-ink` / `--pm-muted` / `--pm-foreground` | `#0b1220` / `#506070` / `#111827` | text colors |
+| `--pm-on-accent` | `#ffffff` | text and icons on accent |
+| `--pm-font-mono` | IBM Plex Mono stack | monospace font |
 
 ## The annotation data model
 
@@ -288,27 +306,9 @@ The list panel shows resolved annotations with a visual indicator, so the human 
 |----------|------|---------|-------------|
 | `store` | `AnnotationStore` | `createLocalStorageStore()` | Where annotations are persisted/sent |
 | `labels` | `AnnotationLabels` | `defaultLabels` (Chinese) | UI text overrides |
+| `themeName` | `string` | `'blue'` | Preset theme name (attribute: `theme`) |
+| `theme` | `AnnotationTheme` | `{}` | Fine-grained accent overrides, applied on top of the preset |
 | `visible` | `boolean` | `false` | Whether the launcher is shown on the page (attribute: `visible`) |
-
-## Theming
-
-All styles are isolated in Shadow DOM. Customize via CSS custom properties on the host element:
-
-```html
-<patch-mark style="--pm-accent: #0A84FF"></patch-mark>
-```
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `--pm-accent` | `#0058d0` | Primary accent color |
-| `--pm-accent-dark` | `#003e94` | Hover/active states |
-| `--pm-accent-soft` | `#e8f0fe` | Light backgrounds |
-| `--pm-panel-bg` | `#fff` | Panel background |
-| `--pm-panel-solid` | `#fff` | Solid fallback (for `backdrop-filter`不支持时) |
-| `--pm-text` | `#1a1a1a` | Primary text |
-| `--pm-text-muted` | `#6b7280` | Secondary text |
-| `--pm-border` | `#e5e7eb` | Borders |
-| `--pm-overlay` | `rgba(0,88,208,0.12)` | Element highlight overlay |
 
 ## Labels
 
