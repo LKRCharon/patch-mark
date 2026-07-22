@@ -14,7 +14,7 @@ export type { FetchStoreOptions } from './stores/fetch.js';
 export { formatAnnotationAsPrompt, formatAnnotationsAsPrompt } from './prompt.js';
 export { defaultLabels } from './labels.js';
 export { shadowStyles, globalStyles } from './styles.js';
-export { VERSION } from './identity.js';
+export { VERSION, THEME_NAMES } from './identity.js';
 
 export type {
   Annotation,
@@ -27,6 +27,7 @@ export type {
   HoverInfo,
   PickerTarget,
   PropertyChange,
+  ThemeName,
   ToolMode,
 } from './types.js';
 

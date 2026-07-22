@@ -1,10 +1,10 @@
-import type { Annotation, AnnotationLabels, AnnotationStore, AnnotationTheme, ElementTarget, HoverInfo, PickerTarget, PropertyChange, ToolMode } from './types.js';
+import type { Annotation, AnnotationLabels, AnnotationStore, AnnotationTheme, ElementTarget, HoverInfo, PickerTarget, PropertyChange, ThemeName, ToolMode } from './types.js';
 import { describeElement, toElementTarget, formatTime } from './utils.js';
 import { createLocalStorageStore } from './stores/localStorage.js';
 import { defaultLabels } from './labels.js';
 import { formatAnnotationAsPrompt, formatAnnotationsAsPrompt } from './prompt.js';
 import { shadowStyles, globalStyles } from './styles.js';
-import { CLASS_PREFIX, CSS_VAR_PREFIX, ELEMENT_TAG, GLOBAL_STYLE_ATTR, PICKER_ACTIVE_CLASS, UI_ATTR, VISIBLE_ATTR } from './identity.js';
+import { CLASS_PREFIX, CSS_VAR_PREFIX, ELEMENT_TAG, GLOBAL_STYLE_ATTR, PICKER_ACTIVE_CLASS, THEME_ATTR, UI_ATTR, VISIBLE_ATTR } from './identity.js';
 
 const MAX_MESSAGE_LENGTH = 1200;
 
@@ -89,7 +89,35 @@ export class PatchMark extends BaseHTMLElement {
   // Public configuration
   store: AnnotationStore = createLocalStorageStore();
   labels: AnnotationLabels = { ...defaultLabels };
-  theme: AnnotationTheme = {};
+
+  private _theme: AnnotationTheme = {};
+
+  /**
+   * Fine-grained color overrides, applied on top of the active preset.
+   * Reactive: reassigning applies immediately (and clears keys left out).
+   */
+  get theme(): AnnotationTheme {
+    return this._theme;
+  }
+
+  set theme(value: AnnotationTheme | null | undefined) {
+    this._theme = value ?? {};
+    this.applyTheme();
+  }
+
+  /**
+   * Preset theme name, reflected to the theme attribute. Unknown values are
+   * passed through so host CSS can define custom presets
+   * (patch-mark[theme="brand"] { --pm-accent: ... }).
+   */
+  get themeName(): ThemeName | (string & {}) {
+    return this.getAttribute(THEME_ATTR) ?? 'blue';
+  }
+
+  set themeName(value: string | null | undefined) {
+    if (value) this.setAttribute(THEME_ATTR, value);
+    else this.removeAttribute(THEME_ATTR);
+  }
 
   // Internal state
   private mode: ToolMode = 'closed';
@@ -151,6 +179,17 @@ export class PatchMark extends BaseHTMLElement {
     }
   }
 
+  private applyTheme(): void {
+    if (!this.shadow) return;
+    const set = (name: string, value: string | undefined): void => {
+      if (value) this.style.setProperty(name, value);
+      else this.style.removeProperty(name);
+    };
+    set(`${CSS_VAR_PREFIX}-accent`, this._theme.accent);
+    set(`${CSS_VAR_PREFIX}-accent-dark`, this._theme.accentDark);
+    set(`${CSS_VAR_PREFIX}-accent-soft`, this._theme.accentSoft);
+  }
+
   private updateVisibility(): void {
     const isVisible = this.visible;
     if (this.launcherEl) {
@@ -209,9 +248,7 @@ export class PatchMark extends BaseHTMLElement {
     this.panelEl.addEventListener('dragend', () => this.handleDragEnd());
 
     // Apply theme overrides
-    if (this.theme.accent) this.style.setProperty(`${CSS_VAR_PREFIX}-accent`, this.theme.accent);
-    if (this.theme.accentDark) this.style.setProperty(`${CSS_VAR_PREFIX}-accent-dark`, this.theme.accentDark);
-    if (this.theme.accentSoft) this.style.setProperty(`${CSS_VAR_PREFIX}-accent-soft`, this.theme.accentSoft);
+    this.applyTheme();
 
     this.updateVisibility();
     this.updatePanel();

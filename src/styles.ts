@@ -45,20 +45,61 @@ function buildShadowStyles(prefix: string): string {
   line-height: 1.5;
   color: #0b1220;
 
-  --${cv}-accent: #0058d0;
-  --${cv}-accent-dark: #003f99;
-  --${cv}-accent-soft: rgba(0, 88, 208, 0.12);
-  --${cv}-ink: #0b1220;
-  --${cv}-muted: #506070;
-  --${cv}-foreground: #111827;
-  --${cv}-line: rgba(0, 54, 128, 0.14);
-  --${cv}-line-strong: rgba(0, 54, 128, 0.24);
-  --${cv}-panel-solid: #ffffff;
-  --${cv}-surface-muted: #eaf2ff;
-  --${cv}-on-accent: #ffffff;
-  --${cv}-font-mono: "IBM Plex Mono", "SFMono-Regular", "Consolas", monospace;
-  --${cv}-error: #b42318;
-  --${cv}-success: #087f5b;
+  ${cv}-accent: #0058d0;
+  ${cv}-accent-dark: #003f99;
+  ${cv}-accent-soft: rgba(0, 88, 208, 0.12);
+  ${cv}-ink: #0b1220;
+  ${cv}-muted: #506070;
+  ${cv}-foreground: #111827;
+  ${cv}-line: rgba(0, 54, 128, 0.14);
+  ${cv}-line-strong: rgba(0, 54, 128, 0.24);
+  ${cv}-panel-solid: #ffffff;
+  ${cv}-surface-muted: #eaf2ff;
+  ${cv}-on-accent: #ffffff;
+  ${cv}-font-mono: "IBM Plex Mono", "SFMono-Regular", "Consolas", monospace;
+  ${cv}-error: #b42318;
+  ${cv}-success: #087f5b;
+}
+
+/* ---- Preset themes (Tailwind palette families) ----
+   Selected with the theme attribute: <patch-mark theme="violet">.
+   Each preset retunes the accent ramp plus the tinted neutrals
+   (surface-muted, lines) so the UI blends with the host site's brand.
+   Any value can still be overridden per-var from light-DOM CSS. */
+:host([theme="violet"]) {
+  ${cv}-accent: #7c3aed;
+  ${cv}-accent-dark: #5b21b6;
+  ${cv}-accent-soft: rgba(124, 58, 237, 0.12);
+  ${cv}-surface-muted: #f5f3ff;
+  ${cv}-line: rgba(76, 29, 149, 0.14);
+  ${cv}-line-strong: rgba(76, 29, 149, 0.24);
+}
+
+:host([theme="emerald"]) {
+  ${cv}-accent: #059669;
+  ${cv}-accent-dark: #065f46;
+  ${cv}-accent-soft: rgba(5, 150, 105, 0.12);
+  ${cv}-surface-muted: #ecfdf5;
+  ${cv}-line: rgba(6, 78, 59, 0.14);
+  ${cv}-line-strong: rgba(6, 78, 59, 0.24);
+}
+
+:host([theme="orange"]) {
+  ${cv}-accent: #ea580c;
+  ${cv}-accent-dark: #9a3412;
+  ${cv}-accent-soft: rgba(234, 88, 12, 0.12);
+  ${cv}-surface-muted: #fff7ed;
+  ${cv}-line: rgba(124, 45, 18, 0.14);
+  ${cv}-line-strong: rgba(124, 45, 18, 0.24);
+}
+
+:host([theme="rose"]) {
+  ${cv}-accent: #e11d48;
+  ${cv}-accent-dark: #9f1239;
+  ${cv}-accent-soft: rgba(225, 29, 72, 0.12);
+  ${cv}-surface-muted: #fff1f2;
+  ${cv}-line: rgba(136, 19, 55, 0.14);
+  ${cv}-line-strong: rgba(136, 19, 55, 0.24);
 }
 
 *,
@@ -77,9 +118,9 @@ function buildShadowStyles(prefix: string): string {
   padding: 0 0.9rem;
   border: none;
   border-radius: 0.9rem;
-  background: linear-gradient(135deg, var(--${cv}-accent), var(--${cv}-accent-dark));
-  color: var(--${cv}-on-accent);
-  box-shadow: 0 2px 12px color-mix(in srgb, var(--${cv}-accent) 28%, transparent),
+  background: linear-gradient(135deg, var(${cv}-accent), var(${cv}-accent-dark));
+  color: var(${cv}-on-accent);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(${cv}-accent) 28%, transparent),
               0 1px 3px rgba(0, 0, 0, 0.06);
   font: inherit;
   font-size: 0.85rem;
@@ -87,11 +128,13 @@ function buildShadowStyles(prefix: string): string {
   transition: border-radius 300ms cubic-bezier(0.4, 0, 0.2, 1),
               box-shadow 200ms ease,
               transform 200ms ease,
-              background 200ms ease;
+              background 200ms ease,
+              translate 260ms cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   pointer-events: auto;
   overflow: hidden;
   white-space: nowrap;
+  translate: calc(-1 * var(--${cv}-dodge-x, 0px)) 0;
 }
 
 .${prefix}-launcher svg {
@@ -111,7 +154,7 @@ function buildShadowStyles(prefix: string): string {
 
 .${prefix}-launcher:hover {
   border-radius: 1.5rem;
-  box-shadow: 0 8px 28px color-mix(in srgb, var(--${cv}-accent) 38%, transparent),
+  box-shadow: 0 8px 28px color-mix(in srgb, var(${cv}-accent) 38%, transparent),
               0 2px 8px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
 }
@@ -126,12 +169,12 @@ function buildShadowStyles(prefix: string): string {
 }
 
 .${prefix}-launcher.is-active {
-  background: var(--${cv}-accent-dark);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--${cv}-accent-dark) 25%, transparent);
+  background: var(${cv}-accent-dark);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(${cv}-accent-dark) 25%, transparent);
 }
 
 .${prefix}-launcher.is-active:hover {
-  box-shadow: 0 6px 24px color-mix(in srgb, var(--${cv}-accent-dark) 35%, transparent),
+  box-shadow: 0 6px 24px color-mix(in srgb, var(${cv}-accent-dark) 35%, transparent),
               0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -148,11 +191,20 @@ function buildShadowStyles(prefix: string): string {
   -webkit-backdrop-filter: blur(18px);
   pointer-events: auto;
   cursor: auto;
+  translate: calc(-1 * var(--${cv}-dodge-x, 0px)) 0;
+  transition: translate 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 160ms ease;
+}
+
+/* Picking mode: pointer over the panel body turns it into a ghost so the
+   elements underneath stay hoverable and clickable */
+.${prefix}-panel.is-ghost {
+  opacity: 0.12;
+  pointer-events: none;
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .${prefix}-panel {
-    background: var(--${cv}-panel-solid);
+    background: var(${cv}-panel-solid);
   }
 }
 
@@ -160,7 +212,7 @@ function buildShadowStyles(prefix: string): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--${cv}-line);
+  border-bottom: 1px solid var(${cv}-line);
   padding: 0.55rem 0.6rem 0.55rem 0.75rem;
 }
 
@@ -186,7 +238,7 @@ function buildShadowStyles(prefix: string): string {
   border-radius: 0.55rem;
   padding: 0.46rem 0.55rem;
   background: transparent;
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
   font-size: 0.84rem;
   font-weight: 650;
   cursor: pointer;
@@ -199,8 +251,8 @@ function buildShadowStyles(prefix: string): string {
 
 .${prefix}-panel-tabs button:hover,
 .${prefix}-panel-tabs button.is-active {
-  background: var(--${cv}-accent-soft);
-  color: var(--${cv}-accent-dark);
+  background: var(${cv}-accent-soft);
+  color: var(${cv}-accent-dark);
 }
 
 .${prefix}-close {
@@ -208,14 +260,14 @@ function buildShadowStyles(prefix: string): string {
   height: 2rem;
   border-radius: 0.5rem;
   background: transparent;
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
   cursor: pointer;
 }
 
 .${prefix}-close:hover,
 .${prefix}-back:hover {
-  background: var(--${cv}-surface-muted);
-  color: var(--${cv}-ink);
+  background: var(${cv}-surface-muted);
+  color: var(${cv}-ink);
 }
 
 .${prefix}-close svg {
@@ -240,7 +292,7 @@ function buildShadowStyles(prefix: string): string {
 .${prefix}-picker-note svg {
   width: 1.15rem;
   height: 1.15rem;
-  color: var(--${cv}-accent);
+  color: var(${cv}-accent);
 }
 
 .${prefix}-picker-note p,
@@ -254,7 +306,7 @@ function buildShadowStyles(prefix: string): string {
 }
 
 .${prefix}-picker-note p {
-  color: var(--${cv}-ink);
+  color: var(${cv}-ink);
   font-size: 0.92rem;
   font-weight: 700;
 }
@@ -262,7 +314,7 @@ function buildShadowStyles(prefix: string): string {
 .${prefix}-picker-note span {
   grid-column: 2;
   margin-top: 0.1rem;
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
   font-size: 0.79rem;
   line-height: 1.45;
 }
@@ -278,15 +330,15 @@ function buildShadowStyles(prefix: string): string {
 
 .${prefix}-target > span:first-child {
   width: 100%;
-  color: var(--${cv}-muted);
-  font-family: var(--${cv}-font-mono);
+  color: var(${cv}-muted);
+  font-family: var(${cv}-font-mono);
   font-size: 0.72rem;
 }
 
 .${prefix}-target > strong {
   flex: 1;
   overflow: hidden;
-  color: var(--${cv}-ink);
+  color: var(${cv}-ink);
   font-size: 0.88rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -297,20 +349,20 @@ function buildShadowStyles(prefix: string): string {
   width: 100%;
   min-height: 7.5rem;
   resize: vertical;
-  border: 1px solid var(--${cv}-line-strong);
+  border: 1px solid var(${cv}-line-strong);
   border-radius: 0.7rem;
   outline: none;
-  background: var(--${cv}-panel-solid);
+  background: var(${cv}-panel-solid);
   padding: 0.65rem 0.7rem;
-  color: var(--${cv}-ink);
+  color: var(${cv}-ink);
   font: inherit;
   font-size: 0.9rem;
   line-height: 1.5;
 }
 
 .${prefix}-compose textarea:focus {
-  border-color: var(--${cv}-accent);
-  box-shadow: 0 0 0 3px var(--${cv}-accent-soft);
+  border-color: var(${cv}-accent);
+  box-shadow: 0 0 0 3px var(${cv}-accent-soft);
 }
 
 .${prefix}-compose-actions {
@@ -333,17 +385,17 @@ function buildShadowStyles(prefix: string): string {
 
 .${prefix}-back {
   background: transparent;
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
 }
 
 .${prefix}-send {
   gap: 0.4rem;
-  background: var(--${cv}-accent);
-  color: var(--${cv}-on-accent);
+  background: var(${cv}-accent);
+  color: var(${cv}-on-accent);
 }
 
 .${prefix}-send:hover:not(:disabled) {
-  background: var(--${cv}-accent-dark);
+  background: var(${cv}-accent-dark);
 }
 
 .${prefix}-send:disabled {
@@ -358,19 +410,19 @@ function buildShadowStyles(prefix: string): string {
 
 .${prefix}-copy-btn {
   gap: 0.3rem;
-  border: 1px solid var(--${cv}-line-strong);
+  border: 1px solid var(${cv}-line-strong);
   border-radius: 0.6rem;
   background: transparent;
   padding: 0.3rem 0.55rem;
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
   font-size: 0.78rem;
   font-weight: 650;
   cursor: pointer;
 }
 
 .${prefix}-copy-btn:hover {
-  background: var(--${cv}-surface-muted);
-  color: var(--${cv}-ink);
+  background: var(${cv}-surface-muted);
+  color: var(${cv}-ink);
 }
 
 .${prefix}-copy-btn svg {
@@ -385,11 +437,11 @@ function buildShadowStyles(prefix: string): string {
 }
 
 .${prefix}-status.is-error {
-  color: var(--${cv}-error);
+  color: var(${cv}-error);
 }
 
 .${prefix}-status.is-success {
-  color: var(--${cv}-success);
+  color: var(${cv}-success);
 }
 
 /* ---- Selection level navigation ---- */
@@ -405,19 +457,19 @@ function buildShadowStyles(prefix: string): string {
   justify-content: center;
   width: 1.5rem;
   height: 1.5rem;
-  border: 1px solid var(--${cv}-line-strong);
+  border: 1px solid var(${cv}-line-strong);
   border-radius: 0.4rem;
   background: transparent;
   padding: 0;
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
   cursor: pointer;
   transition: all 140ms ease;
 }
 
 .${prefix}-nav-btn:hover:not(:disabled) {
-  border-color: var(--${cv}-accent);
-  background: var(--${cv}-accent-soft);
-  color: var(--${cv}-accent-dark);
+  border-color: var(${cv}-accent);
+  background: var(${cv}-accent-soft);
+  color: var(${cv}-accent-dark);
 }
 
 .${prefix}-nav-btn:disabled {
@@ -435,11 +487,11 @@ function buildShadowStyles(prefix: string): string {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  border: 1px solid var(--${cv}-line-strong);
+  border: 1px solid var(${cv}-line-strong);
   border-radius: 0.4rem;
   background: transparent;
   padding: 0.18rem 0.45rem;
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
   font: inherit;
   font-size: 0.74rem;
   font-weight: 650;
@@ -448,14 +500,14 @@ function buildShadowStyles(prefix: string): string {
 }
 
 .${prefix}-prop-toggle:hover {
-  background: var(--${cv}-surface-muted);
-  color: var(--${cv}-ink);
+  background: var(${cv}-surface-muted);
+  color: var(${cv}-ink);
 }
 
 .${prefix}-prop-toggle.is-active {
-  border-color: var(--${cv}-accent);
-  background: var(--${cv}-accent-soft);
-  color: var(--${cv}-accent-dark);
+  border-color: var(${cv}-accent);
+  background: var(${cv}-accent-soft);
+  color: var(${cv}-accent-dark);
 }
 
 .${prefix}-prop-count {
@@ -465,8 +517,8 @@ function buildShadowStyles(prefix: string): string {
   min-width: 1.1rem;
   height: 1.1rem;
   border-radius: 0.55rem;
-  background: var(--${cv}-accent);
-  color: var(--${cv}-on-accent);
+  background: var(${cv}-accent);
+  color: var(${cv}-on-accent);
   font-size: 0.66rem;
   font-weight: 700;
   padding: 0 0.2rem;
@@ -474,7 +526,7 @@ function buildShadowStyles(prefix: string): string {
 
 .${prefix}-prop-panel {
   margin-bottom: 0.75rem;
-  border: 1px solid var(--${cv}-line);
+  border: 1px solid var(${cv}-line);
   border-radius: 0.6rem;
   overflow: hidden;
 }
@@ -482,8 +534,8 @@ function buildShadowStyles(prefix: string): string {
 .${prefix}-prop-hint {
   margin: 0;
   padding: 0.4rem 0.55rem;
-  background: var(--${cv}-surface-muted);
-  color: var(--${cv}-muted);
+  background: var(${cv}-surface-muted);
+  color: var(${cv}-muted);
   font-size: 0.7rem;
   line-height: 1.35;
 }
@@ -493,17 +545,17 @@ function buildShadowStyles(prefix: string): string {
   grid-template-columns: 5.5rem 1fr 4.5rem;
   align-items: center;
   gap: 0.4rem;
-  border-top: 1px solid var(--${cv}-line);
+  border-top: 1px solid var(${cv}-line);
   padding: 0.32rem 0.55rem;
 }
 
 .${prefix}-prop-row.is-changed {
-  background: var(--${cv}-accent-soft);
+  background: var(${cv}-accent-soft);
 }
 
 .${prefix}-prop-name {
-  color: var(--${cv}-muted);
-  font-family: var(--${cv}-font-mono);
+  color: var(${cv}-muted);
+  font-family: var(${cv}-font-mono);
   font-size: 0.72rem;
   white-space: nowrap;
   overflow: hidden;
@@ -511,8 +563,8 @@ function buildShadowStyles(prefix: string): string {
 }
 
 .${prefix}-prop-current {
-  color: var(--${cv}-ink);
-  font-family: var(--${cv}-font-mono);
+  color: var(${cv}-ink);
+  font-family: var(${cv}-font-mono);
   font-size: 0.74rem;
   white-space: nowrap;
   overflow: hidden;
@@ -522,24 +574,24 @@ function buildShadowStyles(prefix: string): string {
 
 .${prefix}-prop-input {
   width: 100%;
-  border: 1px solid var(--${cv}-line);
+  border: 1px solid var(${cv}-line);
   border-radius: 0.3rem;
-  background: var(--${cv}-panel-solid);
+  background: var(${cv}-panel-solid);
   padding: 0.18rem 0.3rem;
-  color: var(--${cv}-accent-dark);
-  font-family: var(--${cv}-font-mono);
+  color: var(${cv}-accent-dark);
+  font-family: var(${cv}-font-mono);
   font-size: 0.72rem;
   outline: none;
   text-align: center;
 }
 
 .${prefix}-prop-input:focus {
-  border-color: var(--${cv}-accent);
-  box-shadow: 0 0 0 2px var(--${cv}-accent-soft);
+  border-color: var(${cv}-accent);
+  box-shadow: 0 0 0 2px var(${cv}-accent-soft);
 }
 
 .${prefix}-prop-input::placeholder {
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
   opacity: 0.5;
 }
 
@@ -555,16 +607,16 @@ function buildShadowStyles(prefix: string): string {
   align-items: center;
   gap: 0.2rem;
   border-radius: 0.3rem;
-  background: var(--${cv}-accent-soft);
+  background: var(${cv}-accent-soft);
   padding: 0.15rem 0.35rem;
-  color: var(--${cv}-accent-dark);
-  font-family: var(--${cv}-font-mono);
+  color: var(${cv}-accent-dark);
+  font-family: var(${cv}-font-mono);
   font-size: 0.68rem;
   white-space: nowrap;
 }
 
 .${prefix}-change strong {
-  color: var(--${cv}-accent);
+  color: var(${cv}-accent);
 }
 
 /* ---- List ---- */
@@ -578,14 +630,14 @@ function buildShadowStyles(prefix: string): string {
 
 .${prefix}-empty {
   padding: 0.75rem 0.65rem;
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
   font-size: 0.86rem;
 }
 
 .${prefix}-item {
   display: grid;
   gap: 0.35rem;
-  border-bottom: 1px solid var(--${cv}-line);
+  border-bottom: 1px solid var(${cv}-line);
   padding: 0.9rem 0.65rem;
 }
 
@@ -602,11 +654,11 @@ function buildShadowStyles(prefix: string): string {
 }
 
 .${prefix}-item.is-drop-before {
-  box-shadow: inset 0 2px 0 0 var(--${cv}-accent);
+  box-shadow: inset 0 2px 0 0 var(${cv}-accent);
 }
 
 .${prefix}-item.is-drop-after {
-  box-shadow: inset 0 -2px 0 0 var(--${cv}-accent);
+  box-shadow: inset 0 -2px 0 0 var(${cv}-accent);
 }
 
 .${prefix}-item.is-resolved .${prefix}-item-header strong {
@@ -637,7 +689,7 @@ function buildShadowStyles(prefix: string): string {
   border-radius: 0.3rem;
   background: transparent;
   padding: 0.15rem;
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
   cursor: grab;
   opacity: 0.35;
   transition: opacity 140ms ease, color 140ms ease;
@@ -645,7 +697,7 @@ function buildShadowStyles(prefix: string): string {
 
 .${prefix}-drag-handle:hover {
   opacity: 1;
-  color: var(--${cv}-accent);
+  color: var(${cv}-accent);
 }
 
 .${prefix}-drag-handle:active {
@@ -671,7 +723,7 @@ function buildShadowStyles(prefix: string): string {
   border-radius: 0.35rem;
   background: transparent;
   padding: 0.25rem 0.35rem;
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
   font: inherit;
   font-size: 0.74rem;
   font-weight: 600;
@@ -679,12 +731,12 @@ function buildShadowStyles(prefix: string): string {
 }
 
 .${prefix}-item-actions button:hover {
-  background: var(--${cv}-surface-muted);
-  color: var(--${cv}-ink);
+  background: var(${cv}-surface-muted);
+  color: var(${cv}-ink);
 }
 
 .${prefix}-item-actions button.is-resolve {
-  color: var(--${cv}-accent-dark);
+  color: var(${cv}-accent-dark);
 }
 
 .${prefix}-item-actions button svg {
@@ -698,22 +750,22 @@ function buildShadowStyles(prefix: string): string {
   gap: 0.15rem;
   font-size: 0.68rem;
   font-weight: 700;
-  color: var(--${cv}-success);
+  color: var(${cv}-success);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .${prefix}-item strong {
   overflow: hidden;
-  color: var(--${cv}-ink);
+  color: var(${cv}-ink);
   font-size: 0.88rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .${prefix}-item time {
-  color: var(--${cv}-muted);
-  font-family: var(--${cv}-font-mono);
+  color: var(${cv}-muted);
+  font-family: var(${cv}-font-mono);
   font-size: 0.72rem;
 }
 
@@ -721,7 +773,7 @@ function buildShadowStyles(prefix: string): string {
 .${prefix}-item-context {
   display: block;
   overflow: hidden;
-  color: var(--${cv}-muted);
+  color: var(${cv}-muted);
   font-size: 0.75rem;
   line-height: 1.45;
   text-overflow: ellipsis;
@@ -729,11 +781,11 @@ function buildShadowStyles(prefix: string): string {
 }
 
 .${prefix}-item code {
-  font-family: var(--${cv}-font-mono);
+  font-family: var(${cv}-font-mono);
 }
 
 .${prefix}-item p {
-  color: var(--${cv}-foreground);
+  color: var(${cv}-foreground);
   font-size: 0.88rem;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -749,8 +801,8 @@ function buildShadowStyles(prefix: string): string {
 
 .${prefix}-highlight {
   position: fixed;
-  border: 2px solid var(--${cv}-accent);
-  background: var(--${cv}-accent-soft);
+  border: 2px solid var(${cv}-accent);
+  background: var(${cv}-accent-soft);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85) inset;
 }
 
@@ -758,7 +810,7 @@ function buildShadowStyles(prefix: string): string {
   background: transparent;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.85) inset,
-    0 0 0 4px color-mix(in srgb, var(--${cv}-accent) 18%, transparent);
+    0 0 0 4px color-mix(in srgb, var(${cv}-accent) 18%, transparent);
 }
 
 .${prefix}-element-label {
@@ -769,10 +821,10 @@ function buildShadowStyles(prefix: string): string {
   gap: 0.1rem;
   overflow: hidden;
   border-radius: 0.38rem;
-  background: var(--${cv}-accent);
+  background: var(${cv}-accent);
   padding: 0.32rem 0.45rem;
   color: #fff;
-  font-family: var(--${cv}-font-mono);
+  font-family: var(${cv}-font-mono);
   font-size: 0.72rem;
   line-height: 1.3;
   white-space: nowrap;
@@ -811,7 +863,7 @@ function buildShadowStyles(prefix: string): string {
 
   .${prefix}-launcher:hover {
     border-radius: 0.9rem;
-    box-shadow: 0 2px 12px color-mix(in srgb, var(--${cv}-accent) 28%, transparent),
+    box-shadow: 0 2px 12px color-mix(in srgb, var(${cv}-accent) 28%, transparent),
                 0 1px 3px rgba(0, 0, 0, 0.06);
     transform: none;
   }

@@ -85,6 +85,41 @@ tool.store = createFetchStore({ endpoint: '/api/annotations' });
 
 Now annotations flow to your server, where your coding agent can read them as structured data and act on each item.
 
+## Theming
+
+Five presets drawn from the Tailwind CSS palette. Pick one with the `theme` attribute and the whole UI (launcher, panel, selection highlight) retints to match the host site's brand:
+
+| Theme | Accent | Works well on |
+| --- | --- | --- |
+| `blue` (default) | `#0058d0` | neutral SaaS dashboards |
+| `violet` | `#7c3aed` | creative / AI tools |
+| `emerald` | `#059669` | docs, fintech, admin panels |
+| `orange` | `#ea580c` | marketing sites |
+| `rose` | `#e11d48` | bold consumer brands |
+
+```html
+<patch-mark theme="emerald" visible></patch-mark>
+```
+
+```js
+tool.themeName = 'rose';            // switch preset at runtime
+tool.theme = { accent: '#ff6d01' }; // fine-grained override, wins over the preset
+```
+
+Every color token is a CSS custom property, so host pages can restyle the component from plain CSS or even register their own named preset:
+
+```css
+patch-mark {
+  --pm-accent: #ff6d01;
+  --pm-accent-dark: #c25400;
+}
+
+/* custom preset, used as <patch-mark theme="brand"> */
+patch-mark[theme="brand"] {
+  --pm-accent: #ff6d01;
+}
+```
+
 ## The annotation data model
 
 Every annotation captures exactly what an agent needs to locate and fix an element:

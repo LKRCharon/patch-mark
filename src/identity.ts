@@ -11,6 +11,9 @@ export const UI_ATTR = 'data-pm-ui';
 export const PICKER_ACTIVE_CLASS = 'pm-picker-active';
 export const STORAGE_KEY_DEFAULT = 'patch-mark:annotations';
 export const VISIBLE_ATTR = 'visible';
+export const THEME_ATTR = 'theme';
+/** Preset themes selectable via the theme attribute (CSS-driven, see styles.ts). */
+export const THEME_NAMES = ['blue', 'violet', 'emerald', 'orange', 'rose'] as const;
 
 // Injected by esbuild at build time (--define); falls back to 'dev' when
 // the source is consumed without the define (e.g. direct ts-node import).

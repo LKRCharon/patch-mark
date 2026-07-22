@@ -88,3 +88,6 @@ export type AnnotationTheme = {
   accentDark?: string;
   accentSoft?: string;
 };
+
+/** Built-in preset themes (see the theme attribute / themeName property). */
+export type ThemeName = 'blue' | 'violet' | 'emerald' | 'orange' | 'rose';
