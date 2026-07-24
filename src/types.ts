@@ -17,7 +17,7 @@ export type PickerTarget = ElementTarget & {
   hoverInfo?: HoverInfo;
 };
 
-export type ToolMode = 'closed' | 'picking' | 'compose' | 'list';
+export type ToolMode = 'closed' | 'picking' | 'compose' | 'list' | 'locked';
 
 export type AnnotationStatus = 'open' | 'resolved';
 
@@ -54,6 +54,12 @@ export interface AnnotationStore {
   reorder?(ids: string[]): Promise<void>;
 }
 
+/** Context passed to the onError callback when a store operation fails. */
+export type PatchMarkErrorContext = {
+  operation: 'list' | 'create' | 'resolve' | 'reorder';
+  annotationId?: string;
+};
+
 export type AnnotationLabels = {
   picker: string;
   pickerHint: string;
@@ -81,6 +87,11 @@ export type AnnotationLabels = {
   dragLabel?: string;
   expandLabel?: string;
   shrinkLabel?: string;
+  lockedTitle?: string;
+  lockedHint?: string;
+  lockedPlaceholder?: string;
+  lockedSubmit?: string;
+  lockedError?: string;
 };
 
 export type AnnotationTheme = {

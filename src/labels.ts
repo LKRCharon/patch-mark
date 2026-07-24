@@ -27,4 +27,9 @@ export const defaultLabels: AnnotationLabels = {
   dragLabel: '拖动排序',
   expandLabel: '扩展到父级',
   shrinkLabel: '收缩到子级',
+  lockedTitle: '需要访问令牌',
+  lockedHint: '此页面的批注功能受保护，请输入分享链接中的访问令牌。',
+  lockedPlaceholder: '粘贴令牌…',
+  lockedSubmit: '解锁',
+  lockedError: '令牌无效或已过期，请重新获取。',
 };

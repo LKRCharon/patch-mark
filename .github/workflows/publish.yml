@@ -1,0 +1,37 @@
+name: publish
+
+# Token-free publishing via npm Trusted Publishing (OIDC): the workflow
+# exchanges a short-lived credential with npm, so no NPM_TOKEN secret is
+# needed. Prerequisite: register this repo + workflow filename (publish.yml)
+# as a trusted publisher on the package's npm Settings page. Requires
+# Node >= 22.14 and npm CLI >= 11.5.1.
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # OIDC, required for trusted publishing + provenance
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Ensure npm CLI is new enough for trusted publishing (>= 11.5.1).
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+
+      - run: npm run build
+
+      # prepublishOnly re-runs the build as a safety net. No NODE_AUTH_TOKEN:
+      # trusted publishing authenticates via the OIDC token above.
+      - run: npm publish --provenance --access public
+
+      # After a successful run: git tag vX.Y.Z && git push --tags

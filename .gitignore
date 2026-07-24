@@ -3,3 +3,5 @@ dist/*
 !dist/patch-mark.js
 *.tgz
 .DS_Store
+# local promo/card assets, not shipped
+promo/

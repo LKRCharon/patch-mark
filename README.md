@@ -22,6 +22,8 @@ This is not another annotation library for human review: `patch-mark` is specifi
 
 ## Quick start
 
+> Releases and upgrade notes live in [CHANGELOG.md](CHANGELOG.md).
+
 ### Zero config (localStorage)
 
 ```html
@@ -31,7 +33,7 @@ This is not another annotation library for human review: `patch-mark` is specifi
 
 That's it. Click the floating "批注" button, hover over any element, click to select, write your comment, and hit send. Annotations persist in `localStorage`.
 
-> **Note:** The `visible` attribute controls whether the tool is shown on the page. It is **off by default**, so production builds stay clean — enable it only on preview/staging deployments where you collect feedback.
+> **Note:** The `visible` attribute controls whether the tool is shown on the page. It is **off by default** on the raw element, so production builds stay clean — enable it only on preview/staging deployments where you collect feedback. (The `patch-mark/react` wrapper flips this: it renders visible by default, so gating the render is the only switch you need.)
 
 ```html
 <!-- hidden (default, production) -->
@@ -57,7 +59,7 @@ The package is mirrored on all major public CDNs the moment it's published. Drop
 <script type="module" src="https://unpkg.com/patch-mark"></script>
 
 <!-- jsdelivr, version pinned (recommended for anything shared) -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/patch-mark@0.3.0"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/patch-mark@0.5.0"></script>
 ```
 
 Can't use `type="module"`? (CMS code boxes, tag managers, legacy pipelines) — use the IIFE build, which registers the element and exposes a `PatchMark` global:
@@ -165,6 +167,8 @@ type Annotation = {
 };
 ```
 
+> **Compatibility:** the model only ever grows by adding optional fields. Annotations written by older versions (e.g. without `status`) are treated as `open` everywhere — safe to upgrade without migrating data.
+
 ## Store adapter: the agent consumption channel
 
 The store adapter is not an "extensibility feature" — it's the core of the product. This is how annotations get to where your agent can read them.
@@ -199,6 +203,8 @@ When using `createFetchStore`, your server implements these routes:
 | `DELETE` | `{endpoint}/{id}` | — | — | 204 |
 | `POST` | `{endpoint}/reorder` | — | `{ ids: string[] }` | 204 |
 
+> **Server responsibilities:** the client sends `CreateAnnotationInput` only — your server assigns `id`, `createdAt`, and initializes `status: 'open'` on creation. Without `status`, the resolve lifecycle has no meaning. Incomplete implementations (e.g. a missing `PATCH`) fail loudly in the browser console (`[patch-mark] ...` warnings); set the component's `onError` callback to route them into your monitoring. When access control is enabled (see below), every route — including `GET` — answers `401` to a missing or invalid Bearer token, and the component turns a 401 into its lock panel on its own.
+
 **Example server implementation** (Next.js Route Handler, file-based JSON store):
 
 ```ts
@@ -207,6 +213,7 @@ import { randomUUID } from 'crypto';
 import { readFile, writeFile, mkdir, rename } from 'fs/promises';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
+import type { Annotation } from 'patch-mark';
 
 const storePath = path.join(process.cwd(), '.data', 'annotations.json');
 
@@ -243,10 +250,25 @@ export async function PATCH(
   return NextResponse.json({ annotation: annotations[idx] });
 }
 
-// readAnnotations / saveAnnotations helpers omitted for brevity
+async function readAnnotations(): Promise<Annotation[]> {
+  try {
+    return JSON.parse(await readFile(storePath, 'utf8'));
+  } catch {
+    return []; // no file yet
+  }
+}
+
+async function saveAnnotations(annotations: Annotation[]): Promise<void> {
+  await mkdir(path.dirname(storePath), { recursive: true });
+  const tmp = `${storePath}.tmp`; // atomic write: tmp + rename
+  await writeFile(tmp, JSON.stringify(annotations, null, 2));
+  await rename(tmp, storePath);
+}
 ```
 
 Your agent reads the JSON file (or calls `GET /api/annotations`) and processes each annotation with `status: 'open'`. After fixing the code, it calls `PATCH /api/annotations/{id}` with `{ status: 'resolved' }` to close the loop.
+
+The example above shows `GET`/`POST`/`PATCH`. For a copy-paste-ready implementation of all five routes (plus a matching client component), see [`examples/nextjs-app-router/`](examples/nextjs-app-router/) — it ships inside the npm package.
 
 ### Custom store
 
@@ -260,6 +282,32 @@ tool.store = {
   async delete(id) { /* optional */ },
 };
 ```
+
+## Access control (optional)
+
+When the tool is `visible` on a shared staging URL, anyone who finds the page can write annotations to your backend — or read the feedback others left. If that matters, turn on token-based access control; small sites can skip this section entirely.
+
+```html
+<patch-mark visible require-auth></patch-mark>
+```
+
+With `require-auth` set, the launcher opens a lock panel instead of the picker until a valid access token is present. Tokens reach people through sharing links:
+
+```
+https://staging.example.com/dashboard?pm_token=<token>
+```
+
+The component captures the parameter on load, persists it (localStorage with an in-memory fallback), and scrubs it from the address bar so it can't leak through screenshots or forwarded URLs. Every fetch-store request then carries `authorization: Bearer <token>`. Visitors who only got the token string can paste it into the lock panel instead.
+
+Backend contract: with auth enabled, **every** endpoint (including `GET`) answers `401` to a missing or invalid token. The component recognizes the 401 and shows the lock panel automatically — even mid-session, e.g. after a token was revoked. The [`examples/nextjs-app-router/`](examples/nextjs-app-router/) backend implements the whole flow (initial token logged on first request, an admin-guarded minting endpoint, revocation via `.data/tokens.json`); see its README for setup.
+
+Programmatic control is available too:
+
+```ts
+import { setAuthToken, getAuthToken, clearAuthToken } from 'patch-mark';
+```
+
+The localStorage store needs no auth — data never leaves the browser.
 
 ## Reorder annotations
 
@@ -305,10 +353,12 @@ The list panel shows resolved annotations with a visual indicator, so the human 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `store` | `AnnotationStore` | `createLocalStorageStore()` | Where annotations are persisted/sent |
+| `onError` | `(error, context) => void \| null` | `null` (falls back to `console.warn`) | Error reporter for failed store operations — detects incomplete backends early |
 | `labels` | `AnnotationLabels` | `defaultLabels` (Chinese) | UI text overrides |
 | `themeName` | `string` | `'blue'` | Preset theme name (attribute: `theme`) |
 | `theme` | `AnnotationTheme` | `{}` | Fine-grained accent overrides, applied on top of the preset |
 | `visible` | `boolean` | `false` | Whether the launcher is shown on the page (attribute: `visible`) |
+| `requireAuth` | `boolean` | `false` | Lock the tool behind an access token (attribute: `require-auth`) |
 
 ## Labels
 
@@ -336,12 +386,43 @@ tool.labels = {
   resolve: 'Resolve',
   resolved: 'Resolved',
   dragLabel: 'Drag to reorder',
+  lockedTitle: 'Access token required',
+  lockedHint: 'Annotations on this page are protected. Enter the token from your sharing link.',
+  lockedPlaceholder: 'Paste token…',
+  lockedSubmit: 'Unlock',
+  lockedError: 'Token invalid or expired.',
 };
 ```
 
 ## Framework integration
 
 ### React / Next.js
+
+`patch-mark/react` ships a ready-made wrapper: SSR-safe dynamic import, props for every option, and `visible` defaults to true — rendering the component is the opt-in.
+
+```tsx
+'use client';
+import { useMemo } from 'react';
+import { PatchMark } from 'patch-mark/react';
+import { createFetchStore } from 'patch-mark';
+
+export default function PatchMarkClient() {
+  const store = useMemo(() => createFetchStore({ endpoint: '/api/annotations' }), []);
+  return <PatchMark store={store} />;
+}
+```
+
+Gate it by environment where you render it, and production stays clean:
+
+```tsx
+{process.env.NODE_ENV !== 'production' && <PatchMarkClient />}
+```
+
+Every element property is available as a prop — `store`, `labels`, `theme`, `themeName`, `visible`, `onError`, and `requireAuth`.
+
+Importing `patch-mark/react` (once, anywhere) also types the raw element for JSX, so `<patch-mark visible theme="emerald" />` compiles with the `visible`, `theme`, and `accent` attributes.
+
+Prefer your own wrapper? The dynamic-import pattern still works — the element module must only run client-side:
 
 ```tsx
 'use client';
@@ -360,21 +441,7 @@ export default function PatchMark() {
     });
   }, []);
 
-  return <patch-mark ref={ref as any}></patch-mark>;
-}
-```
-
-TypeScript: add this to your `env.d.ts` for JSX support:
-
-```ts
-import type { DetailedHTMLProps, HTMLAttributes } from 'react';
-
-declare module 'react' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'patch-mark': DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement>;
-    }
-  }
+  return <patch-mark ref={ref as any} visible></patch-mark>;
 }
 ```
 

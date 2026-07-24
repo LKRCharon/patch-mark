@@ -12,6 +12,10 @@ export const PICKER_ACTIVE_CLASS = 'pm-picker-active';
 export const STORAGE_KEY_DEFAULT = 'patch-mark:annotations';
 export const VISIBLE_ATTR = 'visible';
 export const THEME_ATTR = 'theme';
+export const REQUIRE_AUTH_ATTR = 'require-auth';
+/** URL parameter carrying an access token (sharing links), captured on load. */
+export const TOKEN_PARAM = 'pm_token';
+export const STORAGE_KEY_TOKEN = 'patch-mark:token';
 /** Preset themes selectable via the theme attribute (CSS-driven, see styles.ts). */
 export const THEME_NAMES = ['blue', 'violet', 'emerald', 'orange', 'rose'] as const;
 

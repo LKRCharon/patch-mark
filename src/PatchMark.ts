@@ -1,10 +1,11 @@
-import type { Annotation, AnnotationLabels, AnnotationStore, AnnotationTheme, ElementTarget, HoverInfo, PickerTarget, PropertyChange, ThemeName, ToolMode } from './types.js';
+import type { Annotation, AnnotationLabels, AnnotationStore, AnnotationTheme, ElementTarget, HoverInfo, PatchMarkErrorContext, PickerTarget, PropertyChange, ThemeName, ToolMode } from './types.js';
 import { describeElement, toElementTarget, formatTime } from './utils.js';
 import { createLocalStorageStore } from './stores/localStorage.js';
 import { defaultLabels } from './labels.js';
 import { formatAnnotationAsPrompt, formatAnnotationsAsPrompt } from './prompt.js';
 import { shadowStyles, globalStyles } from './styles.js';
-import { CLASS_PREFIX, CSS_VAR_PREFIX, ELEMENT_TAG, GLOBAL_STYLE_ATTR, PICKER_ACTIVE_CLASS, THEME_ATTR, UI_ATTR, VISIBLE_ATTR } from './identity.js';
+import { CLASS_PREFIX, CSS_VAR_PREFIX, ELEMENT_TAG, GLOBAL_STYLE_ATTR, PICKER_ACTIVE_CLASS, REQUIRE_AUTH_ATTR, THEME_ATTR, UI_ATTR, VISIBLE_ATTR } from './identity.js';
+import { getAuthToken, setAuthToken } from './auth.js';
 
 const MAX_MESSAGE_LENGTH = 1200;
 
@@ -49,6 +50,7 @@ const ICONS = {
   grip: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>',
   chevronUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>',
   chevronDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
 };
 
 function rgbToHex(color: string): string {
@@ -89,6 +91,13 @@ export class PatchMark extends BaseHTMLElement {
   // Public configuration
   store: AnnotationStore = createLocalStorageStore();
   labels: AnnotationLabels = { ...defaultLabels };
+
+  /**
+   * Error reporter for failed store operations. When set, it replaces the
+   * default console.warn — wire it to your monitoring to detect incomplete
+   * backends (e.g. a missing PATCH endpoint) early.
+   */
+  onError: ((error: Error, context: PatchMarkErrorContext) => void) | null = null;
 
   private _theme: AnnotationTheme = {};
 
@@ -156,7 +165,7 @@ export class PatchMark extends BaseHTMLElement {
   private rafId: number | undefined;
 
   static get observedAttributes(): string[] {
-    return ['accent', VISIBLE_ATTR];
+    return ['accent', VISIBLE_ATTR, REQUIRE_AUTH_ATTR];
   }
 
   attributeChangedCallback(name: string, _old: string, value: string): void {
@@ -177,6 +186,23 @@ export class PatchMark extends BaseHTMLElement {
       this.setAttribute(VISIBLE_ATTR, '');
     } else {
       this.removeAttribute(VISIBLE_ATTR);
+    }
+  }
+
+  /**
+   * When enabled, the tool stays locked until a valid access token is
+   * present (captured from ?pm_token= sharing links, or entered into the
+   * lock panel). Off by default — small sites should not have to bother.
+   */
+  get requireAuth(): boolean {
+    return this.hasAttribute(REQUIRE_AUTH_ATTR);
+  }
+
+  set requireAuth(value: boolean) {
+    if (value) {
+      this.setAttribute(REQUIRE_AUTH_ATTR, '');
+    } else {
+      this.removeAttribute(REQUIRE_AUTH_ATTR);
     }
   }
 
@@ -232,13 +258,14 @@ export class PatchMark extends BaseHTMLElement {
     this.launcherEl.innerHTML = `${ICONS.annotate}<span>${this.labels.picker}</span>`;
     this.launcherEl.addEventListener('click', () => {
       if (this.mode !== 'closed') this.closeTool();
-      else this.startPicking();
+      else this.openTool();
     });
     this.shadow.appendChild(this.launcherEl);
 
     // Delegate panel clicks
     this.panelEl.addEventListener('click', (e) => this.handlePanelClick(e));
     this.panelEl.addEventListener('input', (e) => this.handlePanelInput(e));
+    this.panelEl.addEventListener('keydown', (e) => this.handlePanelKeyDown(e));
 
     // Drag-and-drop for list reordering
     this.panelEl.addEventListener('mousedown', (e) => this.handleDragHandleDown(e));
@@ -266,7 +293,7 @@ export class PatchMark extends BaseHTMLElement {
   // ---- Public API ----
 
   open(): void {
-    this.startPicking();
+    this.openTool();
   }
 
   close(): void {
@@ -274,6 +301,21 @@ export class PatchMark extends BaseHTMLElement {
   }
 
   // ---- Mode transitions ----
+
+  // Single entry point for opening the tool: with requireAuth enabled and no
+  // token present, show the lock panel instead of picking — without ever
+  // hitting the backend.
+  private openTool(): void {
+    if (this.requireAuth && !getAuthToken()) {
+      this.mode = 'locked';
+      this.status = null;
+      this.statusType = null;
+      this.updateOverlay();
+      this.updatePanel();
+      return;
+    }
+    this.startPicking();
+  }
 
   private closeTool(): void {
     this.mode = 'closed';
@@ -531,6 +573,37 @@ export class PatchMark extends BaseHTMLElement {
 
   // ---- Data operations ----
 
+  private reportError(error: unknown, context: PatchMarkErrorContext): void {
+    const err = error instanceof Error ? error : new Error(String(error));
+    if (this.onError) {
+      try {
+        this.onError(err, context);
+      } catch {
+        // A broken consumer error handler must not break the tool.
+      }
+    } else {
+      console.warn(`[patch-mark] ${context.operation} failed:`, err);
+    }
+  }
+
+  /**
+   * Reports a store failure and, when the backend rejected the token (401),
+   * drops into locked mode. Returns true for auth failures so the caller can
+   * skip its generic error handling.
+   */
+  private handleStoreError(error: unknown, context: PatchMarkErrorContext): boolean {
+    this.reportError(error, context);
+    if (!isAuthError(error)) return false;
+    this.mode = 'locked';
+    this.status = this.labels.lockedError ?? '令牌无效或已过期，请重新获取。';
+    this.statusType = 'error';
+    this.cleanupPicking();
+    this.cleanupComposeTracking();
+    this.updateOverlay();
+    this.updatePanel();
+    return true;
+  }
+
   private async loadAnnotations(): Promise<void> {
     this.isLoading = true;
     this.status = null;
@@ -541,8 +614,10 @@ export class PatchMark extends BaseHTMLElement {
       const pagePath = window.location.pathname;
       this.annotations = await this.store.list(pagePath);
     } catch (error) {
-      this.status = error instanceof Error ? error.message : this.labels.loading;
-      this.statusType = 'error';
+      if (!this.handleStoreError(error, { operation: 'list' })) {
+        this.status = error instanceof Error ? error.message : this.labels.loading;
+        this.statusType = 'error';
+      }
     } finally {
       this.isLoading = false;
       this.updatePanel();
@@ -579,8 +654,10 @@ export class PatchMark extends BaseHTMLElement {
       this.cleanupComposeTracking();
       this.updateOverlay();
     } catch (error) {
-      this.status = error instanceof Error ? error.message : 'Failed to submit.';
-      this.statusType = 'error';
+      if (!this.handleStoreError(error, { operation: 'create' })) {
+        this.status = error instanceof Error ? error.message : 'Failed to submit.';
+        this.statusType = 'error';
+      }
     } finally {
       this.isSubmitting = false;
       this.updatePanel();
@@ -625,9 +702,20 @@ export class PatchMark extends BaseHTMLElement {
       const updated = await this.store.update(id, { status: 'resolved' });
       this.annotations = this.annotations.map((a) => (a.id === id ? updated : a));
       this.updatePanel();
-    } catch {
-      // silent
+    } catch (error) {
+      if (!this.handleStoreError(error, { operation: 'resolve', annotationId: id })) {
+        this.status = error instanceof Error ? error.message : 'Failed to resolve.';
+        this.statusType = 'error';
+        this.updatePanel();
+      }
     }
+  }
+
+  /** Validate a token entered in the lock panel by loading the list. */
+  private async unlock(token: string): Promise<void> {
+    setAuthToken(token);
+    // A wrong token comes back as a 401, and handleStoreError re-locks the panel.
+    await this.openList();
   }
 
   // ---- Drag-and-drop reordering ----
@@ -725,8 +813,9 @@ export class PatchMark extends BaseHTMLElement {
     if (this.store.reorder) {
       try {
         await this.store.reorder(annotations.map((a) => a.id));
-      } catch {
-        // silent — in-memory order is already updated
+      } catch (error) {
+        // In-memory order is already updated; surface the persistence failure.
+        this.handleStoreError(error, { operation: 'reorder' });
       }
     }
 
@@ -838,6 +927,12 @@ export class PatchMark extends BaseHTMLElement {
       case 'resolve':
         if (id) this.resolveAnnotation(id);
         break;
+      case 'unlock': {
+        const input = this.panelEl?.querySelector(`.${CLASS_PREFIX}-locked-input`);
+        const token = input instanceof HTMLInputElement ? input.value.trim() : '';
+        if (token) this.unlock(token);
+        break;
+      }
       case 'toggle-properties':
         this.showProperties = !this.showProperties;
         this.updatePanel();
@@ -848,6 +943,15 @@ export class PatchMark extends BaseHTMLElement {
       case 'shrink-selection':
         this.shrinkSelection();
         break;
+    }
+  }
+
+  private handlePanelKeyDown(e: KeyboardEvent): void {
+    if (e.key !== 'Enter') return;
+    const target = e.target as HTMLElement;
+    if (target instanceof HTMLInputElement && target.classList.contains(`${CLASS_PREFIX}-locked-input`)) {
+      const token = target.value.trim();
+      if (token) this.unlock(token);
     }
   }
 
@@ -1002,6 +1106,8 @@ export class PatchMark extends BaseHTMLElement {
         return this.renderCompose();
       case 'list':
         return this.renderList();
+      case 'locked':
+        return this.renderLocked();
       default:
         return '';
     }
@@ -1013,6 +1119,32 @@ export class PatchMark extends BaseHTMLElement {
         ${ICONS.crosshair}
         <p>${escapeHtml(this.labels.picker)}</p>
         <span>${escapeHtml(this.labels.pickerHint)}</span>
+      </div>
+    `;
+  }
+
+  private renderLocked(): string {
+    const statusHtml = this.status
+      ? `<p class="${CLASS_PREFIX}-status is-error">${escapeHtml(this.status)}</p>`
+      : '';
+    return `
+      <div class="${CLASS_PREFIX}-locked">
+        ${ICONS.lock}
+        <p>${escapeHtml(this.labels.lockedTitle ?? '需要访问令牌')}</p>
+        <span>${escapeHtml(this.labels.lockedHint ?? '此页面的批注功能受保护，请输入分享链接中的访问令牌。')}</span>
+        <input
+          type="text"
+          class="${CLASS_PREFIX}-locked-input"
+          placeholder="${escapeHtml(this.labels.lockedPlaceholder ?? '粘贴令牌…')}"
+          aria-label="${escapeHtml(this.labels.lockedPlaceholder ?? '粘贴令牌…')}"
+          spellcheck="false"
+          autocomplete="off"
+        />
+        ${statusHtml}
+        <button type="button" class="${CLASS_PREFIX}-send" data-action="unlock">
+          ${escapeHtml(this.labels.lockedSubmit ?? '解锁')}
+          ${ICONS.send}
+        </button>
       </div>
     `;
   }
@@ -1114,8 +1246,8 @@ export class PatchMark extends BaseHTMLElement {
       content = this.annotations.map((annotation) => this.renderItem(annotation)).join('');
     }
 
-    const statusHtml = this.status && this.statusType === 'success'
-      ? `<p class="${CLASS_PREFIX}-status is-success">${escapeHtml(this.status)}</p>`
+    const statusHtml = this.status && (this.statusType === 'success' || this.annotations.length > 0)
+      ? `<p class="${CLASS_PREFIX}-status ${this.statusType === 'success' ? 'is-success' : 'is-error'}">${escapeHtml(this.status)}</p>`
       : '';
 
     return `
@@ -1165,6 +1297,12 @@ export class PatchMark extends BaseHTMLElement {
       </article>
     `;
   }
+}
+
+// Auth failures are matched by name (not instanceof) so they survive
+// duplicated module copies in mixed ESM/CDN setups.
+function isAuthError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'PatchMarkAuthError';
 }
 
 function escapeHtml(text: string): string {

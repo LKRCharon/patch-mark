@@ -319,6 +319,55 @@ function buildShadowStyles(prefix: string): string {
   line-height: 1.45;
 }
 
+/* ---- Locked (access token) panel ---- */
+.${prefix}-locked {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+  padding: 1rem;
+}
+
+.${prefix}-locked > svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  color: var(${cv}-accent);
+}
+
+.${prefix}-locked p {
+  margin: 0;
+  color: var(${cv}-ink);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.${prefix}-locked > span {
+  color: var(${cv}-muted);
+  font-size: 0.79rem;
+  line-height: 1.45;
+}
+
+.${prefix}-locked-input {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(${cv}-line);
+  border-radius: 0.45rem;
+  padding: 0.5rem 0.6rem;
+  outline: none;
+  font: inherit;
+  font-size: 0.84rem;
+  color: var(${cv}-ink);
+  background: var(${cv}-panel-solid);
+}
+
+.${prefix}-locked-input:focus {
+  border-color: var(${cv}-accent);
+  box-shadow: 0 0 0 3px var(${cv}-accent-soft);
+}
+
+.${prefix}-locked .${prefix}-send {
+  justify-self: end;
+}
+
 /* ---- Compose ---- */
 .${prefix}-target {
   display: flex;
