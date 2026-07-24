@@ -4,11 +4,11 @@ Five presets drawn from the Tailwind CSS palette. Pick one with the `theme` attr
 
 | Theme | Accent | Works well on |
 | --- | --- | --- |
-| `blue` (default) | `#0058d0` | neutral SaaS dashboards |
-| `violet` | `#7c3aed` | creative / AI tools |
-| `emerald` | `#059669` | docs, fintech, admin panels |
-| `orange` | `#ea580c` | marketing sites |
-| `rose` | `#e11d48` | bold consumer brands |
+| `blue` (default) | <span class="pm-swatch" style="background:#0058d0"></span> `#0058d0` | neutral SaaS dashboards |
+| `violet` | <span class="pm-swatch" style="background:#7c3aed"></span> `#7c3aed` | creative / AI tools |
+| `emerald` | <span class="pm-swatch" style="background:#059669"></span> `#059669` | docs, fintech, admin panels |
+| `orange` | <span class="pm-swatch" style="background:#ea580c"></span> `#ea580c` | marketing sites |
+| `rose` | <span class="pm-swatch" style="background:#e11d48"></span> `#e11d48` | bold consumer brands |
 
 ```html
 <patch-mark theme="emerald" visible></patch-mark>
@@ -43,12 +43,12 @@ For one-off tweaks, set the variables inline or from your own stylesheet:
 
 | Variable | Default | Controls |
 | --- | --- | --- |
-| `--pm-accent` | `#0058d0` | launcher, selection highlight, primary buttons |
-| `--pm-accent-dark` | `#003f99` | launcher gradient end, hover/active states |
-| `--pm-accent-soft` | `rgba(0, 88, 208, 0.12)` | selection fill, tinted chip backgrounds |
-| `--pm-surface-muted` | `#eaf2ff` | subtle hover surface, hint bars |
-| `--pm-line` / `--pm-line-strong` | `rgba(0, 54, 128, 0.14 / 0.24)` | hairlines and borders |
-| `--pm-panel-solid` | `#ffffff` | panel background |
-| `--pm-ink` / `--pm-muted` / `--pm-foreground` | `#0b1220` / `#506070` / `#111827` | text colors |
-| `--pm-on-accent` | `#ffffff` | text and icons on accent |
+| `--pm-accent` | <span class="pm-swatch" style="background:#0058d0"></span> `#0058d0` | launcher, selection highlight, primary buttons |
+| `--pm-accent-dark` | <span class="pm-swatch" style="background:#003f99"></span> `#003f99` | launcher gradient end, hover/active states |
+| `--pm-accent-soft` | <span class="pm-swatch" style="background:rgba(0, 88, 208, 0.12)"></span> `rgba(0, 88, 208, 0.12)` | selection fill, tinted chip backgrounds |
+| `--pm-surface-muted` | <span class="pm-swatch" style="background:#eaf2ff"></span> `#eaf2ff` | subtle hover surface, hint bars |
+| `--pm-line` / `--pm-line-strong` | <span class="pm-swatch" style="background:rgba(0, 54, 128, 0.14)"></span><span class="pm-swatch" style="background:rgba(0, 54, 128, 0.24)"></span> `rgba(0, 54, 128, 0.14 / 0.24)` | hairlines and borders |
+| `--pm-panel-solid` | <span class="pm-swatch" style="background:#ffffff"></span> `#ffffff` | panel background |
+| `--pm-ink` / `--pm-muted` / `--pm-foreground` | <span class="pm-swatch" style="background:#0b1220"></span> `#0b1220` / <span class="pm-swatch" style="background:#506070"></span> `#506070` / <span class="pm-swatch" style="background:#111827"></span> `#111827` | text colors |
+| `--pm-on-accent` | <span class="pm-swatch" style="background:#ffffff"></span> `#ffffff` | text and icons on accent |
 | `--pm-font-mono` | IBM Plex Mono stack | monospace font |

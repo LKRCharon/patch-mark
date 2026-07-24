@@ -23,6 +23,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - README slimmed to a quick-start overview; full theming / API / store / REST
   / access-control / framework content moved to the docs site.
+- Docs theme restyled after tailwindcss.com's visual language: Inter + IBM
+  Plex Mono, slate neutrals, always-dark slate code blocks in both color
+  modes, blueprint-grid hero, crosshair logo/favicon, and color swatches
+  rendered inline in the theming tables.
 
 ## [0.5.0] - 2026-07-23
 

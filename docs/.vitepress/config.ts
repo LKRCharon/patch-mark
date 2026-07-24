@@ -5,6 +5,22 @@ export default defineConfig({
   description:
     'UI feedback for AI coding agents — point at elements, get structured context for your agent.',
   base: '/patch-mark/docs/',
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/patch-mark/docs/logo.svg' }],
+    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
+    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+    [
+      'link',
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap',
+      },
+    ],
+  ],
+  markdown: {
+    // Always-dark slate code blocks in both color modes (tailwindcss.com style)
+    theme: { light: 'night-owl', dark: 'night-owl' },
+  },
   locales: {
     root: { label: 'English', lang: 'en' },
     zh: {
@@ -22,6 +38,7 @@ export default defineConfig({
     },
   },
   themeConfig: {
+    logo: '/logo.svg',
     socialLinks: [
       { icon: 'github', link: 'https://github.com/LKRCharon/patch-mark' },
     ],

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="url(#pm-g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <linearGradient id="pm-g" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0058d0"/>
+      <stop offset="1" stop-color="#0ea5e9"/>
+    </linearGradient>
+  </defs>
+  <circle cx="12" cy="12" r="9"/>
+  <line x1="21.5" y1="12" x2="17.5" y2="12"/>
+  <line x1="6.5" y1="12" x2="2.5" y2="12"/>
+  <line x1="12" y1="6.5" x2="12" y2="2.5"/>
+  <line x1="12" y1="21.5" x2="12" y2="17.5"/>
+</svg>

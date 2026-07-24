@@ -4,11 +4,11 @@
 
 | 主题 | 强调色 | 适配场景 |
 | --- | --- | --- |
-| `blue`（默认） | `#0058d0` | 中性 SaaS 仪表盘 |
-| `violet` | `#7c3aed` | 创意 / AI 工具 |
-| `emerald` | `#059669` | 文档、金融、后台 |
-| `orange` | `#ea580c` | 营销站 |
-| `rose` | `#e11d48` | 醒目消费品牌 |
+| `blue`（默认） | <span class="pm-swatch" style="background:#0058d0"></span> `#0058d0` | 中性 SaaS 仪表盘 |
+| `violet` | <span class="pm-swatch" style="background:#7c3aed"></span> `#7c3aed` | 创意 / AI 工具 |
+| `emerald` | <span class="pm-swatch" style="background:#059669"></span> `#059669` | 文档、金融、后台 |
+| `orange` | <span class="pm-swatch" style="background:#ea580c"></span> `#ea580c` | 营销站 |
+| `rose` | <span class="pm-swatch" style="background:#e11d48"></span> `#e11d48` | 醒目消费品牌 |
 
 ```html
 <patch-mark theme="emerald" visible></patch-mark>
@@ -43,12 +43,12 @@ patch-mark[theme="brand"] {
 
 | 变量 | 默认 | 控制 |
 | --- | --- | --- |
-| `--pm-accent` | `#0058d0` | 启动按钮、选中高亮、主按钮 |
-| `--pm-accent-dark` | `#003f99` | 启动按钮渐变终点、hover/active 态 |
-| `--pm-accent-soft` | `rgba(0, 88, 208, 0.12)` | 选中填充、淡色 chip 底 |
-| `--pm-surface-muted` | `#eaf2ff` | 微妙 hover 面、提示条 |
-| `--pm-line` / `--pm-line-strong` | `rgba(0, 54, 128, 0.14 / 0.24)` | 细线和边框 |
-| `--pm-panel-solid` | `#ffffff` | 面板背景 |
-| `--pm-ink` / `--pm-muted` / `--pm-foreground` | `#0b1220` / `#506070` / `#111827` | 文字色 |
-| `--pm-on-accent` | `#ffffff` | 强调色上的文字与图标 |
+| `--pm-accent` | <span class="pm-swatch" style="background:#0058d0"></span> `#0058d0` | 启动按钮、选中高亮、主按钮 |
+| `--pm-accent-dark` | <span class="pm-swatch" style="background:#003f99"></span> `#003f99` | 启动按钮渐变终点、hover/active 态 |
+| `--pm-accent-soft` | <span class="pm-swatch" style="background:rgba(0, 88, 208, 0.12)"></span> `rgba(0, 88, 208, 0.12)` | 选中填充、淡色 chip 底 |
+| `--pm-surface-muted` | <span class="pm-swatch" style="background:#eaf2ff"></span> `#eaf2ff` | 微妙 hover 面、提示条 |
+| `--pm-line` / `--pm-line-strong` | <span class="pm-swatch" style="background:rgba(0, 54, 128, 0.14)"></span><span class="pm-swatch" style="background:rgba(0, 54, 128, 0.24)"></span> `rgba(0, 54, 128, 0.14 / 0.24)` | 细线和边框 |
+| `--pm-panel-solid` | <span class="pm-swatch" style="background:#ffffff"></span> `#ffffff` | 面板背景 |
+| `--pm-ink` / `--pm-muted` / `--pm-foreground` | <span class="pm-swatch" style="background:#0b1220"></span> `#0b1220` / <span class="pm-swatch" style="background:#506070"></span> `#506070` / <span class="pm-swatch" style="background:#111827"></span> `#111827` | 文字色 |
+| `--pm-on-accent` | <span class="pm-swatch" style="background:#ffffff"></span> `#ffffff` | 强调色上的文字与图标 |
 | `--pm-font-mono` | IBM Plex Mono 栈 | 等宽字体 |

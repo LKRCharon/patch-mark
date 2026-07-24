@@ -1,15 +1,330 @@
-/* patch-mark brand — accent ramp aligned with the component's #0058d0.
-   Night mode is built into VitePress (appearance toggle, follows system,
-   persisted); these variables just retint both themes to brand blue. */
+/* ---------------------------------------------------------------------------
+ * patch-mark docs theme — visual language inspired by tailwindcss.com
+ * (no Tailwind involved, just the aesthetic):
+ *   · Inter for UI text, IBM Plex Mono for code (matches the component)
+ *   · slate neutrals, hairline borders, frosted-glass nav
+ *   · tight display typography (tracking-tighter headings)
+ *   · signature always-dark slate code blocks in both color modes
+ * ------------------------------------------------------------------------- */
+
 :root {
-  --vp-c-brand-1: #0058d0;
-  --vp-c-brand-2: #003f99;
-  --vp-c-brand-3: #2a6ae4;
-  --vp-c-brand-soft: rgba(0, 88, 208, 0.14);
+  /* Type */
+  --vp-font-family-base:
+    'Inter', system-ui, -apple-system, 'Segoe UI', Roboto,
+    'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --vp-font-family-mono:
+    'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Brand — patch-mark blue, tuned like Tailwind's link/solid split */
+  --vp-c-brand: #0058d0;
+  --vp-c-brand-1: #0058d0; /* links, text accents */
+  --vp-c-brand-2: #003f99; /* hover */
+  --vp-c-brand-3: #1c64e0; /* solid buttons */
+  --vp-c-brand-soft: rgba(0, 88, 208, 0.1);
+
+  /* Neutrals — Tailwind slate ramp */
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-alt: #f8fafc;  /* slate-50 */
+  --vp-c-bg-soft: #f1f5f9; /* slate-100 */
+  --vp-c-bg-elv: #ffffff;
+  --vp-c-divider: #e2e8f0; /* slate-200 */
+  --vp-c-gutter: #e2e8f0;
+  --vp-c-text-1: #0f172a;  /* slate-900 */
+  --vp-c-text-2: #475569;  /* slate-600 */
+  --vp-c-text-3: #94a3b8;  /* slate-400 */
+
+  /* Frosted nav */
+  --vp-nav-bg-color: rgba(255, 255, 255, 0.72);
+  --vp-sidebar-bg-color: #ffffff;
+
+  /* Signature always-dark code blocks (slate-900), both modes */
+  --vp-code-block-bg: #0f172a;
+  --pm-code-block-border: rgba(148, 163, 184, 0.16);
+  --vp-code-line-highlight-color: rgba(56, 189, 248, 0.12);
+  --vp-code-copy-code-border-color: rgba(148, 163, 184, 0.28);
+  --vp-code-copy-code-bg: rgba(15, 23, 42, 0.55);
+  --vp-code-copy-code-hover-border-color: rgba(148, 163, 184, 0.55);
+  --vp-code-copy-code-hover-bg: rgba(30, 41, 59, 0.9);
+
+  /* Hero: blue → sky gradient name, like Tailwind's sky accents */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #0058d0 25%, #0ea5e9);
+  --vp-home-hero-text-color: var(--vp-c-text-1);
+  --vp-home-hero-tagline-color: var(--vp-c-text-2);
+  --vp-home-hero-image-background-image: none;
+  --vp-home-hero-image-filter: none;
 }
+
 .dark {
-  --vp-c-brand-1: #4d8dff;
-  --vp-c-brand-2: #2a6ae4;
-  --vp-c-brand-3: #6ea8ff;
-  --vp-c-brand-soft: rgba(94, 148, 238, 0.16);
+  --vp-c-brand: #7cb3ff;
+  --vp-c-brand-1: #7cb3ff;
+  --vp-c-brand-2: #4d8dff;
+  --vp-c-brand-3: #1c64e0;
+  --vp-c-brand-soft: rgba(124, 179, 255, 0.14);
+
+  --vp-c-bg: #020617;      /* slate-950 */
+  --vp-c-bg-alt: #0f172a;  /* slate-900 */
+  --vp-c-bg-soft: #101a30;
+  --vp-c-bg-elv: #0f172a;
+  --vp-c-divider: #1e293b; /* slate-800 */
+  --vp-c-gutter: #0f172a;
+  --vp-c-text-1: #e2e8f0;  /* slate-200 */
+  --vp-c-text-2: #94a3b8;  /* slate-400 */
+  --vp-c-text-3: #64748b;  /* slate-500 */
+
+  --vp-nav-bg-color: rgba(2, 6, 23, 0.72);
+  --vp-sidebar-bg-color: #020617;
+
+  --pm-code-block-border: rgba(148, 163, 184, 0.12);
+
+  --vp-home-hero-name-background: linear-gradient(120deg, #7cb3ff, #38bdf8);
+}
+
+::selection {
+  background-color: rgba(14, 165, 233, 0.22);
+}
+.dark ::selection {
+  background-color: rgba(56, 189, 248, 0.28);
+}
+
+/* ---- Nav: frosted glass + hairline -------------------------------------- */
+
+.VPNavBar .wrapper {
+  backdrop-filter: saturate(1.5) blur(12px);
+  -webkit-backdrop-filter: saturate(1.5) blur(12px);
+}
+
+.VPNavBarTitle .title {
+  font-family: var(--vp-font-family-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.VPNavBarMenuLink,
+.VPNavBarMenuGroup .button-text {
+  font-weight: 500;
+}
+
+/* ---- Sidebar: quiet section labels, confident active item ---------------- */
+
+.VPSidebarItem.level-0 > .item > .text {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-3);
+}
+
+.VPSidebarItem.is-active > .item .text,
+.VPSidebarItem .link.active .text {
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
+
+/* ---- Home hero: blueprint grid, tracking-tighter display type ------------ */
+
+.VPHome .VPHero {
+  position: relative;
+}
+
+.VPHome .VPHero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 42%, black 25%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 42%, black 25%, transparent 78%);
+  pointer-events: none;
+}
+
+.dark .VPHome .VPHero::before {
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
+}
+
+.VPHome .VPHero .container {
+  position: relative;
+  z-index: 1;
+}
+
+.VPHero .name {
+  font-family: var(--vp-font-family-mono);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.VPHero .text {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.VPHero .tagline {
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+
+/* ---- Buttons & feature cards --------------------------------------------- */
+
+.VPButton {
+  border-radius: 9999px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.VPFeatures .box {
+  border-radius: 16px;
+  border: 1px solid var(--vp-c-divider);
+  background-color: var(--vp-c-bg);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.VPFeatures .box:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+  transform: translateY(-2px);
+}
+
+.dark .VPFeatures .box {
+  background-color: var(--vp-c-bg-soft);
+  box-shadow: none;
+}
+
+.dark .VPFeatures .box:hover {
+  border-color: #334155;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.VPFeatures .title {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.VPFeatures .details {
+  line-height: 1.7;
+}
+
+/* ---- Doc typography ------------------------------------------------------- */
+
+.vp-doc {
+  line-height: 1.75;
+}
+
+.vp-doc h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.vp-doc h2 {
+  margin-top: 3rem;
+  border-top: none;
+  padding-top: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.vp-doc h3 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.vp-doc h4 {
+  font-weight: 600;
+}
+
+.vp-doc strong {
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+
+.vp-doc a {
+  font-weight: 500;
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+}
+
+.vp-doc a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Inline code: bare mono like tailwindcss.com prose, no pill background */
+.vp-doc :not(pre) > code {
+  padding: 0;
+  border-radius: 0;
+  background-color: transparent;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.875em;
+  font-weight: 500;
+  color: var(--vp-c-text-1);
+}
+
+.vp-doc a > code {
+  color: inherit;
+}
+
+/* ---- Code blocks: always dark slate --------------------------------------- */
+
+.vp-doc div[class*='language-'] {
+  border: 1px solid var(--pm-code-block-border);
+  border-radius: 12px;
+  background-color: var(--vp-code-block-bg);
+  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.08);
+}
+
+.vp-doc div[class*='language-'] pre {
+  padding: 18px 20px;
+}
+
+.vp-doc div[class*='language-'] code {
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.vp-doc [class*='language-'] .lang {
+  color: #7d8aa5;
+}
+
+/* ---- Tables ---------------------------------------------------------------- */
+
+.vp-doc table {
+  font-size: 0.9rem;
+}
+
+.vp-doc th {
+  background-color: var(--vp-c-bg-soft);
+  font-weight: 600;
+}
+
+.vp-doc tr:nth-child(2n) {
+  background-color: var(--vp-c-bg-alt);
+}
+
+/* ---- Custom containers ------------------------------------------------------ */
+
+.vp-doc .custom-block {
+  border-radius: 12px;
+}
+
+/* ---- Inline color swatches (theming tables) ---------------------------------- */
+
+.pm-swatch {
+  display: inline-block;
+  width: 0.95em;
+  height: 0.95em;
+  margin-right: 0.45em;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.16);
+  vertical-align: -0.12em;
+}
+
+.dark .pm-swatch {
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.24);
 }
