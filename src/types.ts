@@ -52,6 +52,9 @@ export interface AnnotationStore {
   update?(id: string, patch: Partial<Annotation>): Promise<Annotation>;
   delete?(id: string): Promise<void>;
   reorder?(ids: string[]): Promise<void>;
+  /** If set, the handoff prompt instructs the agent to read/resolve
+   *  annotations through this source itself (self-serve loop). */
+  readonly source?: { readonly type: 'rest'; readonly endpoint: string };
 }
 
 /** Context passed to the onError callback when a store operation fails. */
@@ -79,6 +82,7 @@ export type AnnotationLabels = {
   copyAsPrompt: string;
   copyHandoff?: string;
   copied: string;
+  collapse?: string;
   resolve: string;
   resolved: string;
   properties: string;

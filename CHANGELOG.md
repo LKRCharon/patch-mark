@@ -4,6 +4,40 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-07-24
+
+### Added
+
+- **Launcher: drag, collapse-to-edge, hover-peek.** The launcher can now be
+  dragged anywhere on the viewport; dragging near a screen edge snaps it
+  into a slim peek tab. A small collapse button (top-right on hover) does
+  the same explicitly. While peeked, panel and overlay hide; hovering the
+  tab slides the launcher out, clicking restores it. Drag position and
+  collapse state persist in localStorage.
+- **Handoff self-serve loop (REST store).** When the store is a
+  `createFetchStore`, the handoff bar knows the endpoint and copies a
+  self-serve prompt: GET open items, fix each, PATCH it resolved. Each
+  item carries its `id`, and the lifecycle rules tell the agent to skip
+  already-resolved items — so nothing gets re-processed on the next pass.
+  The agent owns the whole loop.
+
+### Changed
+
+- **Panel is now opaque.** Dropped the 96% white + 18px backdrop-blur
+  frost: on content-heavy host pages the 4% bleed-through showed blurred
+  shadows of underlying text inside the input/list area. Panel is now
+  solid `--pm-panel-solid`.
+- **Ghost opacity 0.12 → 0.2.** Picking pointer-pass-through state was so
+  faint it looked broken; slightly more visible now (penetration still
+  comes from `pointer-events: none`, not opacity).
+
+### Fixed
+
+- **Send button stayed disabled after typing.** `handlePanelInput` updated
+  `this.message` on textarea input but never re-toggled the Send button's
+  `disabled`, so Send was stuck and only Copy worked. Send now enables the
+  moment you type.
+
 ## [0.6.1] - 2026-07-24
 
 ### Added

@@ -50,6 +50,7 @@ const ICONS = {
   grip: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>',
   chevronUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>',
   chevronDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+  chevronLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
   lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
 };
 
@@ -142,6 +143,12 @@ export class PatchMark extends BaseHTMLElement {
   private selectedElement: HTMLElement | null = null;
   private selectionPath: HTMLElement[] = [];
   private dodgeX = 0;
+  // Launcher: free-drag, collapse-to-edge, hover-peek.
+  private launcherCollapsed = false;
+  private launcherFloating = false;
+  private launcherPos: { x: number; y: number } | null = null;
+  private dragState: { startX: number; startY: number; moved: boolean; originX: number; originY: number } | null = null;
+  private suppressNextClick = false;
   private showProperties = false;
   private propertyChanges: Record<string, { from: string; to: string }> = {};
 
@@ -281,12 +288,9 @@ export class PatchMark extends BaseHTMLElement {
     this.launcherEl = document.createElement('button');
     this.launcherEl.className = `${CLASS_PREFIX}-launcher`;
     this.launcherEl.type = 'button';
-    this.launcherEl.innerHTML = `${ICONS.annotate}<span>${this.labels.picker}</span>`;
-    this.launcherEl.addEventListener('click', () => {
-      if (this.mode !== 'closed') this.closeTool();
-      else this.openTool();
-    });
+    this.setupLauncherInteraction();
     this.shadow.appendChild(this.launcherEl);
+    this.restoreLauncherState();
 
     // Delegate panel clicks
     this.panelEl.addEventListener('click', (e) => this.handlePanelClick(e));
@@ -937,7 +941,147 @@ export class PatchMark extends BaseHTMLElement {
   // instructions plus the batch data, ready to paste to any agent as-is.
   private async copyHandoff(): Promise<void> {
     const pageUrl = `${window.location.origin}${window.location.pathname}`;
-    await this.writeClipboard(formatHandoffPrompt(this.annotations, pageUrl));
+    await this.writeClipboard(formatHandoffPrompt(this.annotations, pageUrl, this.store.source));
+  }
+
+  // ---- Launcher: drag, collapse-to-edge, hover-peek ----
+
+  private setupLauncherInteraction(): void {
+    if (!this.launcherEl) return;
+    this.launcherEl.addEventListener('pointerdown', (e) => this.onLauncherPointerDown(e));
+    this.launcherEl.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.closest(`.${CLASS_PREFIX}-collapse-btn`)) {
+        e.stopPropagation();
+        this.collapseLauncher();
+        return;
+      }
+      if (this.suppressNextClick) {
+        this.suppressNextClick = false;
+        return;
+      }
+      if (this.launcherCollapsed) {
+        this.expandLauncher();
+        return;
+      }
+      if (this.mode !== 'closed') this.closeTool();
+      else this.openTool();
+    });
+  }
+
+  private onLauncherPointerDown(e: PointerEvent): void {
+    if (this.launcherCollapsed || e.button !== 0 || !this.launcherEl) return;
+    const rect = this.launcherEl.getBoundingClientRect();
+    this.dragState = {
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+      originX: rect.left,
+      originY: rect.top,
+    };
+    document.addEventListener('pointermove', this.boundLauncherMove);
+    document.addEventListener('pointerup', this.boundLauncherUp);
+  }
+
+  private boundLauncherMove = (e: PointerEvent): void => {
+    if (!this.dragState || !this.launcherEl) return;
+    const dx = e.clientX - this.dragState.startX;
+    const dy = e.clientY - this.dragState.startY;
+    if (!this.dragState.moved && Math.hypot(dx, dy) < 4) return;
+    if (!this.dragState.moved) {
+      this.dragState.moved = true;
+      this.launcherFloating = true;
+      this.launcherEl.classList.add('is-floating', 'is-dragging');
+    }
+    const x = this.dragState.originX + dx;
+    const y = this.dragState.originY + dy;
+    this.launcherPos = { x, y };
+    this.launcherEl.style.left = `${x}px`;
+    this.launcherEl.style.top = `${y}px`;
+    this.launcherEl.style.right = '';
+  };
+
+  private boundLauncherUp = (): void => {
+    document.removeEventListener('pointermove', this.boundLauncherMove);
+    document.removeEventListener('pointerup', this.boundLauncherUp);
+    if (!this.dragState) return;
+    const wasDrag = this.dragState.moved;
+    this.launcherEl?.classList.remove('is-dragging');
+    this.dragState = null;
+    if (wasDrag) {
+      this.suppressNextClick = true;
+      // Snap to nearest edge if close, else stay floating.
+      if (this.launcherPos && this.launcherEl && this.snapToEdge()) {
+        this.collapseLauncher();
+      } else {
+        this.persistLauncherState();
+      }
+    }
+  };
+
+  private snapToEdge(): boolean {
+    if (!this.launcherEl || !this.launcherPos) return false;
+    const rect = this.launcherEl.getBoundingClientRect();
+    const cx = this.launcherPos.x + rect.width / 2;
+    const margin = 60;
+    return cx < margin || cx > window.innerWidth - margin;
+  }
+
+  private collapseLauncher(): void {
+    if (this.launcherCollapsed) return;
+    if (this.mode === 'picking') this.closeTool();
+    this.launcherCollapsed = true;
+    this.updatePanel();
+    this.updateOverlay();
+    this.persistLauncherState();
+  }
+
+  private expandLauncher(): void {
+    if (!this.launcherCollapsed || !this.launcherEl) return;
+    this.launcherCollapsed = false;
+    // Restore position: floating coords, or clear inline styles for dock.
+    if (this.launcherFloating && this.launcherPos) {
+      this.launcherEl.style.left = `${this.launcherPos.x}px`;
+      this.launcherEl.style.top = `${this.launcherPos.y}px`;
+      this.launcherEl.style.right = '';
+    } else {
+      this.launcherEl.style.left = '';
+      this.launcherEl.style.top = '';
+      this.launcherEl.style.right = '';
+    }
+    this.updatePanel();
+    this.updateOverlay();
+    this.persistLauncherState();
+  }
+
+  private persistLauncherState(): void {
+    try {
+      localStorage.setItem(
+        'patch-mark:launcher',
+        JSON.stringify({
+          collapsed: this.launcherCollapsed,
+          floating: this.launcherFloating,
+          pos: this.launcherPos,
+        }),
+      );
+    } catch { /* private mode / disabled storage */ }
+  }
+
+  private restoreLauncherState(): void {
+    if (!this.launcherEl) return;
+    try {
+      const raw = localStorage.getItem('patch-mark:launcher');
+      if (!raw) return;
+      const state = JSON.parse(raw);
+      if (state.floating && state.pos) {
+        this.launcherFloating = true;
+        this.launcherPos = state.pos;
+        this.launcherEl.classList.add('is-floating');
+        this.launcherEl.style.left = `${state.pos.x}px`;
+        this.launcherEl.style.top = `${state.pos.y}px`;
+      }
+      if (state.collapsed) this.collapseLauncher();
+    } catch { /* ignore malformed */ }
   }
 
   // ---- Event delegation ----
@@ -1011,6 +1155,12 @@ export class PatchMark extends BaseHTMLElement {
     const target = e.target as HTMLElement;
     if (target.tagName === 'TEXTAREA') {
       this.message = (target as HTMLTextAreaElement).value;
+      // Toggle the Send button's disabled state without a full re-render,
+      // which would rebuild the textarea and drop the caret/focus.
+      const sendBtn = this.panelEl?.querySelector<HTMLButtonElement>(
+        `button[data-action="send"]`,
+      );
+      if (sendBtn) sendBtn.disabled = !this.message.trim() || this.isSubmitting;
     } else if (target.tagName === 'INPUT' && target.hasAttribute('data-property')) {
       const prop = target.getAttribute('data-property')!;
       const from = target.getAttribute('data-original')!;
@@ -1040,6 +1190,12 @@ export class PatchMark extends BaseHTMLElement {
 
   private updateOverlay(): void {
     if (!this.overlayEl) return;
+
+    if (this.launcherCollapsed) {
+      this.overlayEl.style.display = 'none';
+      this.overlayEl.innerHTML = '';
+      return;
+    }
 
     // While composing, keep a persistent frame on the selected element
     if (this.mode === 'compose') {
@@ -1112,13 +1268,28 @@ export class PatchMark extends BaseHTMLElement {
   private updatePanel(): void {
     if (!this.panelEl || !this.launcherEl) return;
 
+    // Collapsed (peeked to edge): hide panel, render launcher as a slim tab.
+    if (this.launcherCollapsed) {
+      this.panelEl.style.display = 'none';
+      this.panelEl.innerHTML = '';
+      this.launcherEl.classList.add('is-collapsed');
+      const side = this.dockSide;
+      this.launcherEl.style.left = side === 'left' ? '0.5rem' : '';
+      this.launcherEl.style.right = side === 'right' ? '0.5rem' : '';
+      this.launcherEl.style.top = `${Math.round(window.innerHeight / 2 - 32)}px`;
+      this.launcherEl.innerHTML = `${ICONS.annotate}<span>${this.labels.picker}</span>`;
+      return;
+    }
+    this.launcherEl.classList.remove('is-collapsed');
+
     const isOpen = this.mode !== 'closed';
 
     // Update launcher
     this.launcherEl.classList.toggle('is-active', isOpen);
+    const collapseBtn = `<span class="${CLASS_PREFIX}-collapse-btn" role="button" tabindex="0" data-action="collapse" aria-label="${escapeHtml(this.labels.collapse ?? '收起')}">${ICONS.chevronLeft}</span>`;
     this.launcherEl.innerHTML = isOpen
-      ? `${ICONS.x}<span>${this.labels.close}</span>`
-      : `${ICONS.annotate}<span>${this.labels.picker}</span>`;
+      ? `${ICONS.x}<span>${this.labels.close}</span>${collapseBtn}`
+      : `${ICONS.annotate}<span>${this.labels.picker}</span>${collapseBtn}`;
 
     if (!isOpen) {
       this.panelEl.style.display = 'none';

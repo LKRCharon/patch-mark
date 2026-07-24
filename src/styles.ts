@@ -186,6 +186,86 @@ function buildShadowStyles(prefix: string): string {
               0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+/* ---- Launcher: drag, collapse-to-edge, hover-peek ---- */
+.${prefix}-launcher {
+  position: relative;
+}
+
+.${prefix}-launcher.is-floating {
+  position: fixed;
+  translate: 0;
+}
+
+.${prefix}-launcher.is-dragging {
+  transition: none;
+  cursor: grabbing;
+}
+
+.${prefix}-launcher.is-collapsed {
+  position: fixed;
+  width: 0.5rem;
+  min-width: 0;
+  height: 4rem;
+  padding: 0;
+  border-radius: 0.4rem;
+  overflow: hidden;
+}
+
+.${prefix}-launcher.is-collapsed > svg,
+.${prefix}-launcher.is-collapsed > span {
+  display: none;
+}
+
+.${prefix}-launcher.is-collapsed:hover {
+  width: auto;
+  padding: 0 0.9rem;
+  border-radius: 0.9rem;
+}
+
+.${prefix}-launcher.is-collapsed:hover > svg {
+  display: inline-flex;
+}
+
+.${prefix}-launcher.is-collapsed:hover > span {
+  display: inline-flex;
+  max-width: 5rem;
+  opacity: 1;
+  margin-left: 0.5rem;
+}
+
+.${prefix}-collapse-btn {
+  position: absolute;
+  top: -0.45rem;
+  right: -0.45rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(${cv}-panel-solid);
+  color: var(${cv}-accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.${prefix}-launcher:hover .${prefix}-collapse-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.${prefix}-launcher.is-collapsed .${prefix}-collapse-btn,
+.${prefix}-launcher.is-dragging .${prefix}-collapse-btn {
+  display: none;
+}
+
+.${prefix}-collapse-btn svg {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
 /* ---- Panel ---- */
 .${prefix}-panel {
   /* Stack above the selection overlay (z-index 9999) so the compose/list
@@ -196,11 +276,8 @@ function buildShadowStyles(prefix: string): string {
   overflow: hidden;
   border: 1px solid var(--${cv}-line-strong);
   border-radius: 1rem;
-  background: var(--${cv}-panel-solid);
-  background: color-mix(in srgb, var(--${cv}-panel-solid) 96%, transparent);
+  background: var(${cv}-panel-solid);
   box-shadow: 0 20px 56px rgba(7, 19, 33, 0.18);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
   pointer-events: auto;
   cursor: auto;
   translate: calc(var(--${cv}-dodge-sign, -1) * var(--${cv}-dodge-x, 0px)) 0;
@@ -210,7 +287,9 @@ function buildShadowStyles(prefix: string): string {
 /* Picking mode: pointer over the panel body turns it into a ghost so the
    elements underneath stay hoverable and clickable */
 .${prefix}-panel.is-ghost {
-  opacity: 0.12;
+  /* Picking pointer-passes-through state: pointer-events:none does the
+     actual pass-through; opacity just hints at it. Faint but visible. */
+  opacity: 0.2;
   pointer-events: none;
 }
 

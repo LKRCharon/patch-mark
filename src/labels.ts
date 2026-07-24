@@ -21,6 +21,7 @@ export const defaultLabels: AnnotationLabels = {
   copied: '已复制',
   resolve: '解决',
   resolved: '已解决',
+  collapse: '收起',
   properties: '属性',
   propertiesHint: '直接修改数值，反馈给 agent 精确指令',
   colorLabel: '颜色',

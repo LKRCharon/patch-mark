@@ -46,6 +46,9 @@ export function createFetchStore(options: FetchStoreOptions): AnnotationStore {
   };
 
   return {
+    // Exposed so the handoff prompt can instruct agents to read/resolve
+    // annotations through this endpoint directly (self-serve loop).
+    source: { type: 'rest', endpoint },
     async list(pagePath: string): Promise<Annotation[]> {
       const url = `${endpoint}?page=${encodeURIComponent(pagePath)}`;
       const response = await fetch(url, { cache: 'no-store', headers: withAuth(headers) });

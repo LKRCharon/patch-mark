@@ -74,7 +74,7 @@ items resolved.
 
 生成的 prompt 统一用英文（对 agent 最稳），批注内容保留你写的原文。
 
-**自服务模式**（REST store）——agent 自己拉取并闭环时，改用这段引导（替代派单栏的输出）：
+**自服务模式**（REST store）——当 store 用 `createFetchStore` 时，派单栏已经知道 endpoint，直接复制自服务 prompt。agent 全程托管闭环：读 open 项、逐个改、PATCH 标 resolved——下次派单只含新 open，不会重复处理。每条带 `id`，agent 能自己关闭。产出格式：
 
 ```text
 这个项目用 patch-mark 收集 UI 批注，批注在一个小 REST API 后面：

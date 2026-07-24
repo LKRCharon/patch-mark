@@ -13,6 +13,8 @@ This is not an annotation library for human review — it's specifically the **f
 
 Click the floating button, hover over any element, click to select, write your comment, and hit send. Annotations persist in `localStorage`.
 
+The floating button is draggable — drag it anywhere, or drag it to a screen edge (or hit the small collapse button that appears on hover) to tuck it into a slim edge tab. Hover the tab to peek it back out, click to restore. Position and collapse state persist across reloads.
+
 > The `visible` attribute controls whether the tool is shown. It is **off by default** on the raw element, so production builds stay clean — enable it only on preview/staging. The `patch-mark/react` wrapper flips this: it renders visible by default, so gating the render is the only switch you need.
 
 ```html

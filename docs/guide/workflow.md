@@ -78,8 +78,11 @@ items resolved.
 ### 2. …
 ```
 
-**Self-serve mode** (REST store) — a brief for when the agent fetches and
-closes items itself (paste this instead of the handoff-bar output):
+**Self-serve mode** (REST store) — when the store is a `createFetchStore`,
+the handoff bar already knows the endpoint and copies a self-serve prompt
+directly. The agent owns the whole loop: read open items, fix each, PATCH
+it resolved — so nothing gets re-processed on the next pass. Each item
+carries its `id` so the agent can close it. The shape it produces:
 
 ```text
 This project collects UI feedback via patch-mark. Annotations live behind

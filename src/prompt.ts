@@ -80,12 +80,49 @@ export function formatAnnotationsAsPrompt(annotations: Annotation[], pagePath?: 
  * formatAnnotationsAsPrompt (raw report data), this is meant to be pasted
  * to any agent as-is — no prepending required. Resolved items are excluded.
  */
-export function formatHandoffPrompt(annotations: Annotation[], pageUrl: string): string {
+export function formatHandoffPrompt(
+  annotations: Annotation[],
+  pageUrl: string,
+  source?: { type: 'rest'; endpoint: string },
+): string {
   const open = annotations.filter((a) => a.status !== 'resolved');
   if (open.length === 0) {
     return '## UI Feedback\n\nNo open feedback items.';
   }
 
+  const pagePath = open[0].pagePath;
+
+  // Self-serve mode: the agent owns the lifecycle — read open items through
+  // the REST API, fix each, PATCH it resolved. Next pass only sees new open
+  // items, so nothing gets re-processed.
+  if (source?.type === 'rest') {
+    const header = [
+      `You are maintaining UI feedback annotations managed by patch-mark on ${pageUrl}.`,
+      '',
+      '## Source of truth',
+      'Annotations live behind a REST API. Read the open items, fix each, then mark it resolved yourself — you own the lifecycle so nothing gets re-processed on the next pass.',
+      '',
+      `- GET    ${source.endpoint}?page=${pagePath}   → { annotations }  (process only status:"open")`,
+      `- PATCH  ${source.endpoint}/{id}             → close an item with { "status": "resolved" }`,
+      '',
+      '## Lifecycle rules',
+      '- Only touch items with status "open". Already-resolved items are done — skip them.',
+      '- For each open item: locate the element in the codebase (grep the Selector\'s distinctive class/id, or the visible Text; the Page field maps to the route), apply the Feedback ("Property Changes" are exact `property: from → to`), then PATCH that item resolved.',
+      '- Don\'t pause for confirmation between items — fix and move on.',
+      '- When every open item is resolved, reply with a numbered summary: what changed per item and which files you touched.',
+      '',
+      `## Open items (${open.length})`,
+      '',
+    ];
+    const items = open.map(
+      (a, i) =>
+        `### ${i + 1}. \`<${a.element.tagName}>\` — ${a.element.name}\n\n- **ID:** \`${a.id}\`\n${formatAnnotationFields(a).join('\n')}`,
+    );
+    return [...header, ...items.join('\n\n---\n\n')].join('\n');
+  }
+
+  // Paste-off mode (localStorage / no REST source): data + instructions,
+  // resolving stays manual since the agent can't reach the store.
   const header = [
     'You are fixing a batch of UI feedback captured with patch-mark.',
     '',
@@ -101,11 +138,9 @@ export function formatHandoffPrompt(annotations: Annotation[], pageUrl: string):
     '',
     '---',
   ];
-
   const items = open.map(
-    (annotation, index) =>
-      `### ${index + 1}. \`<${annotation.element.tagName}>\` — ${annotation.element.name}\n\n${formatAnnotationFields(annotation).join('\n')}`,
+    (a, i) =>
+      `### ${i + 1}. \`<${a.element.tagName}>\` — ${a.element.name}\n\n${formatAnnotationFields(a).join('\n')}`,
   );
-
   return [...header, ...items.join('\n\n---\n\n')].join('\n');
 }
