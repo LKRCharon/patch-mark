@@ -20,6 +20,7 @@ tool.labels = {
   notFound: 'Element not found. The page may have changed.',
   contentPrefix: 'Content:',
   copyAsPrompt: 'Copy as prompt',
+  copyHandoff: 'Copy handoff prompt',
   copied: 'Copied',
   resolve: 'Resolve',
   resolved: 'Resolved',

@@ -2,7 +2,7 @@ import type { Annotation, AnnotationLabels, AnnotationStore, AnnotationTheme, El
 import { describeElement, toElementTarget, formatTime } from './utils.js';
 import { createLocalStorageStore } from './stores/localStorage.js';
 import { defaultLabels } from './labels.js';
-import { formatAnnotationAsPrompt, formatAnnotationsAsPrompt } from './prompt.js';
+import { formatAnnotationAsPrompt, formatAnnotationsAsPrompt, formatHandoffPrompt } from './prompt.js';
 import { shadowStyles, globalStyles } from './styles.js';
 import { CLASS_PREFIX, CSS_VAR_PREFIX, ELEMENT_TAG, GLOBAL_STYLE_ATTR, PICKER_ACTIVE_CLASS, POSITION_ATTR, REQUIRE_AUTH_ATTR, THEME_ATTR, UI_ATTR, VISIBLE_ATTR } from './identity.js';
 import { getAuthToken, setAuthToken } from './auth.js';
@@ -381,6 +381,10 @@ export class PatchMark extends BaseHTMLElement {
 
   private async openList(): Promise<void> {
     this.mode = 'list';
+    // Picking's mousemove listener keeps re-adding is-ghost (transparent,
+    // pointer-events:none) as long as it runs; tear it down or the list
+    // panel comes up ghosted and unclickable when entered from picking.
+    this.cleanupPicking();
     this.cleanupComposeTracking();
     this.updateOverlay();
     this.updatePanel();
@@ -891,6 +895,10 @@ export class PatchMark extends BaseHTMLElement {
       text = formatAnnotationsAsPrompt(this.annotations, window.location.pathname);
     }
 
+    await this.writeClipboard(text);
+  }
+
+  private async writeClipboard(text: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(text);
       this.status = this.labels.copied;
@@ -925,6 +933,13 @@ export class PatchMark extends BaseHTMLElement {
     }
   }
 
+  // Copy all open annotations as a self-contained handoff prompt: working
+  // instructions plus the batch data, ready to paste to any agent as-is.
+  private async copyHandoff(): Promise<void> {
+    const pageUrl = `${window.location.origin}${window.location.pathname}`;
+    await this.writeClipboard(formatHandoffPrompt(this.annotations, pageUrl));
+  }
+
   // ---- Event delegation ----
 
   private handlePanelClick(e: MouseEvent): void {
@@ -957,6 +972,9 @@ export class PatchMark extends BaseHTMLElement {
         break;
       case 'copy':
         this.copyAsPrompt(id || undefined);
+        break;
+      case 'copy-handoff':
+        this.copyHandoff();
         break;
       case 'resolve':
         if (id) this.resolveAnnotation(id);
@@ -1284,11 +1302,21 @@ export class PatchMark extends BaseHTMLElement {
       ? `<p class="${CLASS_PREFIX}-status ${this.statusType === 'success' ? 'is-success' : 'is-error'}">${escapeHtml(this.status)}</p>`
       : '';
 
+    const openCount = this.annotations.filter((a) => a.status !== 'resolved').length;
+    const handoffHtml = !this.isLoading && openCount > 0
+      ? `<div class="${CLASS_PREFIX}-handoff-bar">
+          <button type="button" class="${CLASS_PREFIX}-handoff" data-action="copy-handoff">
+            ${ICONS.send}<span>${escapeHtml(this.labels.copyHandoff ?? 'Copy handoff prompt')} · ${openCount}</span>
+          </button>
+        </div>`
+      : '';
+
     return `
       <div class="${CLASS_PREFIX}-list">
         ${statusHtml}
         ${content}
       </div>
+      ${handoffHtml}
     `;
   }
 

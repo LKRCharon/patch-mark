@@ -188,6 +188,10 @@ function buildShadowStyles(prefix: string): string {
 
 /* ---- Panel ---- */
 .${prefix}-panel {
+  /* Stack above the selection overlay (z-index 9999) so the compose/list
+     panel isn't visually pierced by the highlight frame while typing. */
+  position: relative;
+  z-index: 10000;
   width: min(21rem, calc(100vw - 7.5rem));
   overflow: hidden;
   border: 1px solid var(--${cv}-line-strong);
@@ -683,6 +687,47 @@ function buildShadowStyles(prefix: string): string {
   max-height: min(30rem, calc(100dvh - 12rem));
   overflow-y: auto;
   padding-block: 0.35rem;
+}
+
+/* ---- Handoff bar (batch copy CTA pinned under the list) ---- */
+.${prefix}-handoff-bar {
+  padding: 0.6rem 1rem 0.85rem;
+  border-top: 1px solid var(${cv}-line);
+}
+
+.${prefix}-handoff {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 0.7rem;
+  background: linear-gradient(135deg, var(${cv}-accent), var(${cv}-accent-dark));
+  color: var(${cv}-on-accent);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(${cv}-accent) 25%, transparent),
+              0 1px 3px rgba(0, 0, 0, 0.06);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+.${prefix}-handoff:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(${cv}-accent) 32%, transparent),
+              0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.${prefix}-handoff:active {
+  transform: translateY(0);
+}
+
+.${prefix}-handoff svg {
+  width: 1rem;
+  height: 1rem;
 }
 
 .${prefix}-empty {

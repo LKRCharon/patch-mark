@@ -12,7 +12,7 @@ export { createLocalStorageStore } from './stores/localStorage.js';
 export { createFetchStore, createLocalAnnotation, PatchMarkAuthError } from './stores/fetch.js';
 export type { FetchStoreOptions } from './stores/fetch.js';
 export { getAuthToken, setAuthToken, clearAuthToken } from './auth.js';
-export { formatAnnotationAsPrompt, formatAnnotationsAsPrompt } from './prompt.js';
+export { formatAnnotationAsPrompt, formatAnnotationsAsPrompt, formatHandoffPrompt } from './prompt.js';
 export { defaultLabels } from './labels.js';
 export { shadowStyles, globalStyles } from './styles.js';
 export { VERSION, THEME_NAMES } from './identity.js';

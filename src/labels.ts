@@ -17,6 +17,7 @@ export const defaultLabels: AnnotationLabels = {
   notFound: '未找到该元素，页面结构可能已经改动。',
   contentPrefix: '内容：',
   copyAsPrompt: 'Copy as prompt',
+  copyHandoff: '复制派单 prompt',
   copied: '已复制',
   resolve: '解决',
   resolved: '已解决',

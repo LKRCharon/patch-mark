@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-07-24
+
+### Added
+
+- **Handoff bar**: when the list has open annotations, a CTA bar appears at
+  the bottom of the list panel — one click copies a self-contained batch
+  prompt (working instructions plus every open annotation, resolved items
+  excluded), ready to paste to any agent as-is. Label key `copyHandoff`
+  (default: 复制派单 prompt), button shows the open count.
+- **`formatHandoffPrompt(annotations, pageUrl)`** export — the generator
+  behind the handoff bar, for programmatic use. Single annotations keep
+  copying as raw data (`formatAnnotationAsPrompt`); the batch now carries
+  its own instructions.
+
+### Fixed
+
+- **Compose/list panel now stacks above the selection overlay.** The
+  overlay carried `z-index: 9999` while the panel was unpositioned, so the
+  selection highlight frame pierced through the panel while typing
+  feedback. Panel gets `position: relative; z-index: 10000`.
+- **List panel came up ghosted when entered from picking.** Picking's
+  mousemove listener keeps re-applying the `is-ghost` class (transparent,
+  pointer-events:none) as long as it runs; switching to the list tab via
+  the header didn't tear it down, so the whole annotation list rendered
+  at ~12% opacity and was unclickable. `openList` now calls
+  `cleanupPicking` first.
+
 ## [0.6.0] - 2026-07-24
 
 ### Added

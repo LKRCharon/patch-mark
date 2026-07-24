@@ -5,11 +5,10 @@ import type { Annotation } from './types.js';
  * The agent receives everything it needs to locate and fix the element:
  * tag name, CSS selector, human-readable name, visible text, position, and the user's feedback.
  */
-export function formatAnnotationAsPrompt(annotation: Annotation): string {
+/** Shared field lines used by both the single-annotation and handoff formats. */
+function formatAnnotationFields(annotation: Annotation): string[] {
   const el = annotation.element;
   const lines: string[] = [
-    '## UI Feedback',
-    '',
     `- **Element:** \`<${el.tagName}>\``,
     `- **Selector:** \`${el.selector}\``,
     `- **Name:** ${el.name}`,
@@ -36,6 +35,12 @@ export function formatAnnotationAsPrompt(annotation: Annotation): string {
       lines.push(`  - \`${change.property}\`: ${change.from} → ${change.to}`);
     }
   }
+
+  return lines;
+}
+
+export function formatAnnotationAsPrompt(annotation: Annotation): string {
+  const lines: string[] = ['## UI Feedback', '', ...formatAnnotationFields(annotation)];
 
   if (annotation.status) {
     lines.push(`- **Status:** ${annotation.status}`);
@@ -65,6 +70,42 @@ export function formatAnnotationsAsPrompt(annotations: Annotation[], pagePath?: 
   const items = annotations.map((annotation, index) => {
     return `### Feedback #${index + 1}\n\n${formatAnnotationAsPrompt(annotation)}`;
   });
+
+  return [...header, ...items.join('\n\n---\n\n')].join('\n');
+}
+
+/**
+ * Format open annotations as a self-contained handoff prompt: working
+ * instructions followed by the structured batch data. Unlike
+ * formatAnnotationsAsPrompt (raw report data), this is meant to be pasted
+ * to any agent as-is — no prepending required. Resolved items are excluded.
+ */
+export function formatHandoffPrompt(annotations: Annotation[], pageUrl: string): string {
+  const open = annotations.filter((a) => a.status !== 'resolved');
+  if (open.length === 0) {
+    return '## UI Feedback\n\nNo open feedback items.';
+  }
+
+  const header = [
+    'You are fixing a batch of UI feedback captured with patch-mark.',
+    '',
+    `- **Page:** ${pageUrl}`,
+    `- **Open Items:** ${open.length}`,
+    '',
+    'How to work the batch:',
+    '1. Locate each element in the codebase: grep for a distinctive class or id from the Selector, or for the visible Text. The Page field maps to the route/component.',
+    '2. Apply the Feedback. "Property Changes" lines are exact instructions (`property: from → to`); otherwise follow the Feedback text and match the project\'s existing styling conventions.',
+    '3. Don\'t pause for confirmation between items — make the edit and move on.',
+    '',
+    'When finished, reply with a numbered summary: what changed per item and which files you touched. The user will verify in the browser and mark items resolved.',
+    '',
+    '---',
+  ];
+
+  const items = open.map(
+    (annotation, index) =>
+      `### ${index + 1}. \`<${annotation.element.tagName}>\` — ${annotation.element.name}\n\n${formatAnnotationFields(annotation).join('\n')}`,
+  );
 
   return [...header, ...items.join('\n\n---\n\n')].join('\n');
 }

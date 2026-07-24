@@ -77,6 +77,7 @@ export type AnnotationLabels = {
   notFound: string;
   contentPrefix: string;
   copyAsPrompt: string;
+  copyHandoff?: string;
   copied: string;
   resolve: string;
   resolved: string;

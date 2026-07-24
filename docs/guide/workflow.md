@@ -31,6 +31,74 @@ import { formatAnnotationAsPrompt } from 'patch-mark';
 const markdown = formatAnnotationAsPrompt(annotation);
 ```
 
+## Hand off a batch to any agent
+
+Single annotations copy as raw data; a batch copies as a complete
+instruction. When the list has open items, a **handoff bar** appears at the
+bottom of the list panel — one click on *Copy handoff prompt · N* copies a
+self-contained prompt: working instructions plus every open annotation
+(resolved items are excluded). Paste it to any agent as-is, no prepending
+required. Programmatically: `formatHandoffPrompt(annotations, pageUrl)`.
+
+**Paste-off mode** (default localStorage, zero infrastructure) — exactly
+what the handoff bar copies, shown in full:
+
+```text
+You are fixing a batch of UI feedback captured with patch-mark.
+
+- **Page:** http://localhost:3000/dashboard
+- **Open Items:** 10
+
+How to work the batch:
+1. Locate each element in the codebase: grep for a distinctive class or id
+   from the Selector, or for the visible Text. The Page field maps to the
+   route/component.
+2. Apply the Feedback. "Property Changes" lines are exact instructions
+   (`property: from → to`); otherwise follow the Feedback text and match
+   the project's existing styling conventions.
+3. Don't pause for confirmation between items — make the edit and move on.
+
+When finished, reply with a numbered summary: what changed per item and
+which files you touched. The user will verify in the browser and mark
+items resolved.
+
+---
+
+### 1. `<button>` — #submit-btn
+
+- **Element:** `<button>`
+- **Selector:** `div.header > button.submit-btn`
+- **Text:** "Submit Application"
+- **Position:** top=320, left=480, 128x40
+- **Page:** /dashboard
+- **Feedback:** Make this primary and 2px larger
+
+---
+
+### 2. …
+```
+
+**Self-serve mode** (REST store) — a brief for when the agent fetches and
+closes items itself (paste this instead of the handoff-bar output):
+
+```text
+This project collects UI feedback via patch-mark. Annotations live behind
+a small REST API:
+
+- GET   <endpoint>?page=<route>  → { annotations } (pick status "open")
+- PATCH <endpoint>/<id>          → close an item with { "status": "resolved" }
+
+Loop: fetch the open annotations for <route>, fix each one in the codebase
+(locate elements by their `element.selector` class/id or visible text;
+treat `changes[]` as exact property edits), then PATCH it resolved. Clear
+all open items in one pass, then report a numbered summary.
+```
+
+With localStorage the agent can't reach the store, so resolving stays
+manual — you click the check button per item in the list panel after
+verifying. With the REST store the agent closes the loop itself, and the
+panel ticks items off in real time.
+
 ## Resolve lifecycle
 
 Annotations have a `status` field: `'open'` or `'resolved'`. When your agent finishes fixing an issue, it marks the annotation as resolved:
