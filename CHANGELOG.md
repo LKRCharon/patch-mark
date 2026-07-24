@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-07-24
+
+### Added
+
+- **Launcher `position` attribute**: dock the launcher/panel at `right-center`
+  (default), `right-top`, `right-bottom`, `left-center`, `left-top`, or
+  `left-bottom`. The compose dodge now slides the panel to the opposite side
+  based on the dock side, so left-docked positions dodge rightwards.
+- **Docs site** (VitePress) at https://lkrcharon.github.io/patch-mark/docs/ —
+  bilingual (English default, 中文 at `/zh/`), dark mode, brand-tinted to
+  patch-mark's accent. Built and deployed by a new `docs.yml` workflow
+  (landing page stays at `/`, docs at `/docs/`).
+- `homepage` field in package.json (shows on the npm page); Live demo link in
+  the README and the landing nav.
+
+### Changed
+
+- README slimmed to a quick-start overview; full theming / API / store / REST
+  / access-control / framework content moved to the docs site.
+
 ## [0.5.0] - 2026-07-23
 
 Shaped by real-world integration feedback from the first external consumer.
@@ -99,6 +119,7 @@ optional fields. Annotations written by older versions (e.g. without
 `status`) are treated as `open` everywhere, so upgrading never requires a
 data migration.
 
+[0.6.0]: https://github.com/LKRCharon/patch-mark/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/LKRCharon/patch-mark/compare/v0.3.0...v0.5.0
 [0.3.0]: https://github.com/LKRCharon/patch-mark/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/LKRCharon/patch-mark/compare/v0.2.0...v0.2.1

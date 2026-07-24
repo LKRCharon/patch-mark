@@ -4,7 +4,7 @@ import { createLocalStorageStore } from './stores/localStorage.js';
 import { defaultLabels } from './labels.js';
 import { formatAnnotationAsPrompt, formatAnnotationsAsPrompt } from './prompt.js';
 import { shadowStyles, globalStyles } from './styles.js';
-import { CLASS_PREFIX, CSS_VAR_PREFIX, ELEMENT_TAG, GLOBAL_STYLE_ATTR, PICKER_ACTIVE_CLASS, REQUIRE_AUTH_ATTR, THEME_ATTR, UI_ATTR, VISIBLE_ATTR } from './identity.js';
+import { CLASS_PREFIX, CSS_VAR_PREFIX, ELEMENT_TAG, GLOBAL_STYLE_ATTR, PICKER_ACTIVE_CLASS, POSITION_ATTR, REQUIRE_AUTH_ATTR, THEME_ATTR, UI_ATTR, VISIBLE_ATTR } from './identity.js';
 import { getAuthToken, setAuthToken } from './auth.js';
 
 const MAX_MESSAGE_LENGTH = 1200;
@@ -165,7 +165,7 @@ export class PatchMark extends BaseHTMLElement {
   private rafId: number | undefined;
 
   static get observedAttributes(): string[] {
-    return ['accent', VISIBLE_ATTR, REQUIRE_AUTH_ATTR];
+    return ['accent', VISIBLE_ATTR, REQUIRE_AUTH_ATTR, POSITION_ATTR];
   }
 
   attributeChangedCallback(name: string, _old: string, value: string): void {
@@ -174,6 +174,9 @@ export class PatchMark extends BaseHTMLElement {
     }
     if (name === VISIBLE_ATTR) {
       this.updateVisibility();
+    }
+    if (name === POSITION_ATTR) {
+      this.applyDodgeSign();
     }
   }
 
@@ -204,6 +207,29 @@ export class PatchMark extends BaseHTMLElement {
     } else {
       this.removeAttribute(REQUIRE_AUTH_ATTR);
     }
+  }
+
+  /**
+   * Dock position of the launcher/panel: right-center (default), right-top,
+   * right-bottom, left-center, left-top, left-bottom. The panel slides to
+   * the opposite side when it covers the selection (dodge), so left positions
+   * dodge rightwards.
+   */
+  get position(): string {
+    return this.getAttribute(POSITION_ATTR) ?? 'right-center';
+  }
+
+  set position(value: string) {
+    if (value) this.setAttribute(POSITION_ATTR, value);
+    else this.removeAttribute(POSITION_ATTR);
+  }
+
+  private get dockSide(): 'left' | 'right' {
+    return this.position.startsWith('left') ? 'left' : 'right';
+  }
+
+  private applyDodgeSign(): void {
+    this.style.setProperty(`${CSS_VAR_PREFIX}-dodge-sign`, this.dockSide === 'left' ? '1' : '-1');
   }
 
   private applyTheme(): void {
@@ -277,6 +303,7 @@ export class PatchMark extends BaseHTMLElement {
 
     // Apply theme overrides
     this.applyTheme();
+    this.applyDodgeSign();
 
     this.updateVisibility();
     this.updatePanel();
@@ -330,7 +357,7 @@ export class PatchMark extends BaseHTMLElement {
     this.propertyChanges = {};
     this.cleanupPicking();
     this.cleanupComposeTracking();
-    this.setDodgeSide('right');
+    this.setDodgeSide('dock');
     this.updateOverlay();
     this.updatePanel();
   }
@@ -530,21 +557,25 @@ export class PatchMark extends BaseHTMLElement {
 
   // ---- Panel dodge (slide to the other side when covering the selection) ----
 
-  private setDodgeSide(side: 'left' | 'right'): void {
-    if (side === 'left' && this.dodgeX > 0) return;
-    if (side === 'right' && this.dodgeX === 0) return;
-
-    if (side === 'right') {
+  // 'dock' = return to the docked side (no offset); 'away' = slide to the
+  // opposite side to stop covering the selected element.
+  private setDodgeSide(mode: 'dock' | 'away'): void {
+    if (mode === 'dock') {
+      if (this.dodgeX === 0) return;
       this.dodgeX = 0;
       this.style.setProperty(`${CSS_VAR_PREFIX}-dodge-x`, '0px');
       return;
     }
+    if (this.dodgeX > 0) return; // already dodged
 
     const anchor = this.panelEl && this.panelEl.style.display !== 'none' ? this.panelEl : this.launcherEl;
     if (!anchor) return;
     const margin = 20;
-    const target = Math.round(anchor.getBoundingClientRect().left - margin);
-    if (target <= margin) return; // no room on the left side
+    const rect = anchor.getBoundingClientRect();
+    const target = this.dockSide === 'right'
+      ? Math.round(rect.left - margin)                       // slide left
+      : Math.round(window.innerWidth - rect.right - margin); // slide right
+    if (target <= margin) return; // no room on the opposite side
     this.dodgeX = target;
     this.style.setProperty(`${CSS_VAR_PREFIX}-dodge-x`, `${target}px`);
   }
@@ -561,7 +592,10 @@ export class PatchMark extends BaseHTMLElement {
       elementRect.top < panelRect.bottom;
     if (!overlaps) return;
     const elementCenter = (elementRect.left + elementRect.right) / 2;
-    this.setDodgeSide(elementCenter > window.innerWidth / 2 ? 'left' : 'right');
+    const elementOnDockSide = this.dockSide === 'right'
+      ? elementCenter > window.innerWidth / 2
+      : elementCenter < window.innerWidth / 2;
+    this.setDodgeSide(elementOnDockSide ? 'away' : 'dock');
   }
 
   private removeKeyDownListener(): void {

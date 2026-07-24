@@ -13,6 +13,8 @@ export const STORAGE_KEY_DEFAULT = 'patch-mark:annotations';
 export const VISIBLE_ATTR = 'visible';
 export const THEME_ATTR = 'theme';
 export const REQUIRE_AUTH_ATTR = 'require-auth';
+/** Dock position of the launcher/panel: right-center (default) | right-top | right-bottom | left-center | left-top | left-bottom. */
+export const POSITION_ATTR = 'position';
 /** URL parameter carrying an access token (sharing links), captured on load. */
 export const TOKEN_PARAM = 'pm_token';
 export const STORAGE_KEY_TOKEN = 'patch-mark:token';

@@ -29,6 +29,11 @@ export interface PatchMarkProps {
    * built-in lock panel). Off by default.
    */
   requireAuth?: boolean;
+  /**
+   * Dock position of the launcher/panel: right-center (default), right-top,
+   * right-bottom, left-center, left-top, left-bottom.
+   */
+  position?: string;
 }
 
 /**
@@ -40,7 +45,7 @@ export interface PatchMarkProps {
  *   `close()`, `store`, etc. stay reachable.
  */
 export const PatchMark = forwardRef<PatchMarkElement, PatchMarkProps>(function PatchMark(
-  { store, labels, theme, themeName, visible = true, onError, requireAuth = false },
+  { store, labels, theme, themeName, visible = true, onError, requireAuth = false, position },
   forwardedRef,
 ) {
   const ref = useRef<PatchMarkElement | null>(null);
@@ -58,11 +63,12 @@ export const PatchMark = forwardRef<PatchMarkElement, PatchMarkProps>(function P
       el.visible = visible;
       el.onError = onError ?? null;
       el.requireAuth = requireAuth;
+      if (position) el.position = position;
     });
     return () => {
       cancelled = true;
     };
-  }, [store, labels, theme, themeName, visible, onError, requireAuth]);
+  }, [store, labels, theme, themeName, visible, onError, requireAuth, position]);
 
   return createElement('patch-mark', {
     ref: (el: PatchMarkElement | null) => {

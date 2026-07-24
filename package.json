@@ -1,6 +1,6 @@
 {
   "name": "patch-mark",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "UI feedback for AI coding agents — point at elements, get structured context for your agent.",
   "type": "module",
   "main": "./dist/patch-mark.js",
@@ -10,6 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/LKRCharon/patch-mark.git"
   },
+  "homepage": "https://lkrcharon.github.io/patch-mark/",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -34,7 +35,9 @@
     "build": "tsc --emitDeclarationOnly && esbuild src/index.ts --bundle --format=esm --outfile=dist/patch-mark.js --minify --define:__PM_VERSION__=\"'$npm_package_version'\" && esbuild src/index.ts --bundle --format=iife --global-name=PatchMark --outfile=dist/patch-mark.iife.js --minify --define:__PM_VERSION__=\"'$npm_package_version'\" && esbuild src/react.ts --bundle --format=esm --outfile=dist/react.js --minify --external:react --external:patch-mark",
     "build:dev": "tsc --emitDeclarationOnly && esbuild src/index.ts --bundle --format=esm --outfile=dist/patch-mark.js --sourcemap --define:__PM_VERSION__=\"'$npm_package_version'\" && esbuild src/react.ts --bundle --format=esm --outfile=dist/react.js --sourcemap --external:react --external:patch-mark",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs"
   },
   "keywords": [
     "annotation",
@@ -58,6 +61,7 @@
   "devDependencies": {
     "@types/react": "^19.0.0",
     "esbuild": "^0.25.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitepress": "^1.0.0"
   }
 }

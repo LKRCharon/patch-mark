@@ -1,0 +1,62 @@
+name: docs
+
+# Builds the VitePress docs site and the landing page, assembles them into one
+# Pages artifact (landing at /, docs at /docs/), and deploys to GitHub Pages.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'index.html'
+      - '.github/workflows/docs.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: docs
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Landing page demo uses the latest component build.
+      - run: npm run build
+
+      - run: npm run docs:build
+
+      - name: Assemble site
+        run: |
+          mkdir -p site/dist
+          cp index.html site/
+          cp dist/patch-mark.js site/dist/
+          cp -r docs/.vitepress/dist site/docs
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

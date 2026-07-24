@@ -61,6 +61,14 @@ function buildShadowStyles(prefix: string): string {
   ${cv}-success: #087f5b;
 }
 
+/* ---- Launcher/panel dock positions (attribute: position) ----
+   right-center is the :host default above. */
+:host([position="right-top"]) { top: 1.5rem; bottom: auto; align-items: flex-start; }
+:host([position="right-bottom"]) { top: auto; bottom: 1.5rem; align-items: flex-end; }
+:host([position="left-center"]) { right: auto; left: 1.25rem; }
+:host([position="left-top"]) { top: 1.5rem; bottom: auto; right: auto; left: 1.25rem; align-items: flex-start; }
+:host([position="left-bottom"]) { top: auto; bottom: 1.5rem; right: auto; left: 1.25rem; align-items: flex-end; }
+
 /* ---- Preset themes (Tailwind palette families) ----
    Selected with the theme attribute: <patch-mark theme="violet">.
    Each preset retunes the accent ramp plus the tinted neutrals
@@ -134,7 +142,7 @@ function buildShadowStyles(prefix: string): string {
   pointer-events: auto;
   overflow: hidden;
   white-space: nowrap;
-  translate: calc(-1 * var(--${cv}-dodge-x, 0px)) 0;
+  translate: calc(var(--${cv}-dodge-sign, -1) * var(--${cv}-dodge-x, 0px)) 0;
 }
 
 .${prefix}-launcher svg {
@@ -191,7 +199,7 @@ function buildShadowStyles(prefix: string): string {
   -webkit-backdrop-filter: blur(18px);
   pointer-events: auto;
   cursor: auto;
-  translate: calc(-1 * var(--${cv}-dodge-x, 0px)) 0;
+  translate: calc(var(--${cv}-dodge-sign, -1) * var(--${cv}-dodge-x, 0px)) 0;
   transition: translate 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 160ms ease;
 }
 

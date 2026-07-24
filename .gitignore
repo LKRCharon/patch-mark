@@ -5,3 +5,6 @@ dist/*
 .DS_Store
 # local promo/card assets, not shipped
 promo/
+# VitePress build output and cache
+docs/.vitepress/dist
+docs/.vitepress/cache
