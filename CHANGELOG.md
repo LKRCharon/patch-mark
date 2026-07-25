@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-07-24
+
+### Fixed
+
+- **Launcher drag: `pointercancel` now handled.** Touch interruptions
+  (notifications, scroll takeover) no longer leave pointer listeners
+  dangling and the launcher stuck in the grabbing state.
+- **Launcher drag clamped to viewport; saved position clamped on restore.**
+  The launcher can no longer be dragged fully off-screen, and a saved
+  position that lands outside a smaller viewport (window switch / display
+  change) is clamped back into view.
+- **Collapse tab no longer jumps sides.** The peek tab renders on the edge
+  the launcher was actually dragged to, not the configured dock side —
+  expand/restore no longer ping-pongs.
+- **Compose-mode tracking cleaned up on collapse, restored on expand.**
+  scroll/resize listeners no longer leak while peeked.
+- **Launcher drag listeners removed on disconnect.** Unmounting the
+  component mid-drag (e.g. React conditional render) no longer leaks
+  document pointer listeners.
+- **Self-serve handoff prompt: `pagePath` now URL-encoded.** Matches the
+  store's own GET encoding; routes with `?` / `&` / non-ASCII no longer
+  break the agent's URL.
+
 ## [0.7.1] - 2026-07-24
 
 ### Fixed

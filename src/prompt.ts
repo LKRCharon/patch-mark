@@ -102,7 +102,7 @@ export function formatHandoffPrompt(
       '## Source of truth',
       'Annotations live behind a REST API. Read the open items, fix each, then mark it resolved yourself — you own the lifecycle so nothing gets re-processed on the next pass.',
       '',
-      `- GET    ${source.endpoint}?page=${pagePath}   → { annotations }  (process only status:"open")`,
+      `- GET    ${source.endpoint}?page=${encodeURIComponent(pagePath)}   → { annotations }  (process only status:"open")`,
       `- PATCH  ${source.endpoint}/{id}             → close an item with { "status": "resolved" }`,
       '',
       '## Lifecycle rules',

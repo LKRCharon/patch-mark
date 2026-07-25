@@ -317,6 +317,9 @@ export class PatchMark extends BaseHTMLElement {
     this.cleanupPicking();
     this.cleanupComposeTracking();
     this.removeKeyDownListener();
+    document.removeEventListener('pointermove', this.boundLauncherMove);
+    document.removeEventListener('pointerup', this.boundLauncherUp);
+    document.removeEventListener('pointercancel', this.boundLauncherUp);
     window.clearTimeout(this.locateTimeout);
     if (this.rafId !== undefined) window.cancelAnimationFrame(this.rafId);
   }
@@ -981,6 +984,7 @@ export class PatchMark extends BaseHTMLElement {
     };
     document.addEventListener('pointermove', this.boundLauncherMove);
     document.addEventListener('pointerup', this.boundLauncherUp);
+    document.addEventListener('pointercancel', this.boundLauncherUp);
   }
 
   private boundLauncherMove = (e: PointerEvent): void => {
@@ -993,8 +997,11 @@ export class PatchMark extends BaseHTMLElement {
       this.launcherFloating = true;
       this.launcherEl.classList.add('is-floating', 'is-dragging');
     }
-    const x = this.dragState.originX + dx;
-    const y = this.dragState.originY + dy;
+    // Clamp so the launcher can't be dragged fully off-screen and lost.
+    const maxX = window.innerWidth - this.launcherEl.offsetWidth;
+    const maxY = window.innerHeight - this.launcherEl.offsetHeight;
+    const x = Math.max(0, Math.min(this.dragState.originX + dx, maxX));
+    const y = Math.max(0, Math.min(this.dragState.originY + dy, maxY));
     this.launcherPos = { x, y };
     this.launcherEl.style.left = `${x}px`;
     this.launcherEl.style.top = `${y}px`;
@@ -1004,6 +1011,7 @@ export class PatchMark extends BaseHTMLElement {
   private boundLauncherUp = (): void => {
     document.removeEventListener('pointermove', this.boundLauncherMove);
     document.removeEventListener('pointerup', this.boundLauncherUp);
+    document.removeEventListener('pointercancel', this.boundLauncherUp);
     if (!this.dragState) return;
     const wasDrag = this.dragState.moved;
     this.launcherEl?.classList.remove('is-dragging');
@@ -1030,6 +1038,7 @@ export class PatchMark extends BaseHTMLElement {
   private collapseLauncher(): void {
     if (this.launcherCollapsed) return;
     if (this.mode === 'picking') this.closeTool();
+    else if (this.mode === 'compose') this.cleanupComposeTracking();
     this.launcherCollapsed = true;
     this.updatePanel();
     this.updateOverlay();
@@ -1051,6 +1060,7 @@ export class PatchMark extends BaseHTMLElement {
     }
     this.updatePanel();
     this.updateOverlay();
+    if (this.mode === 'compose') this.setupComposeTracking();
     this.persistLauncherState();
   }
 
@@ -1074,11 +1084,15 @@ export class PatchMark extends BaseHTMLElement {
       if (!raw) return;
       const state = JSON.parse(raw);
       if (state.floating && state.pos) {
+        // Clamp into the current viewport — a saved pos can land off-screen
+        // after switching to a smaller window/display.
+        const x = Math.max(0, Math.min(state.pos.x, window.innerWidth - 60));
+        const y = Math.max(0, Math.min(state.pos.y, window.innerHeight - 60));
         this.launcherFloating = true;
-        this.launcherPos = state.pos;
+        this.launcherPos = { x, y };
         this.launcherEl.classList.add('is-floating');
-        this.launcherEl.style.left = `${state.pos.x}px`;
-        this.launcherEl.style.top = `${state.pos.y}px`;
+        this.launcherEl.style.left = `${x}px`;
+        this.launcherEl.style.top = `${y}px`;
       }
       if (state.collapsed) this.collapseLauncher();
     } catch { /* ignore malformed */ }
@@ -1273,7 +1287,11 @@ export class PatchMark extends BaseHTMLElement {
       this.panelEl.style.display = 'none';
       this.panelEl.innerHTML = '';
       this.launcherEl.classList.add('is-collapsed');
-      const side = this.dockSide;
+      // Peek toward the edge the launcher was actually dragged to, not the
+      // configured dock side — avoids the tab jumping sides on expand.
+      const side = this.launcherFloating && this.launcherPos
+        ? (this.launcherPos.x + this.launcherEl.offsetWidth / 2 < window.innerWidth / 2 ? 'left' : 'right')
+        : this.dockSide;
       this.launcherEl.style.left = side === 'left' ? '0.5rem' : '';
       this.launcherEl.style.right = side === 'right' ? '0.5rem' : '';
       this.launcherEl.style.top = `${Math.round(window.innerHeight / 2 - 32)}px`;
