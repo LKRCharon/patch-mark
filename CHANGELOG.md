@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-07-24
+
+### Fixed
+
+- **Batch handoff prompt had every character on its own line.**
+  `[...header, ...items.join(...)]` spread the joined string char-by-char
+  (strings are iterable), so the copied prompt was one character per line.
+  Affects `formatHandoffPrompt` (both modes) and `formatAnnotationsAsPrompt`.
+  Single-item copy was unaffected.
+
 ## [0.7.0] - 2026-07-24
 
 ### Added

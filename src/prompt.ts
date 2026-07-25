@@ -71,7 +71,7 @@ export function formatAnnotationsAsPrompt(annotations: Annotation[], pagePath?: 
     return `### Feedback #${index + 1}\n\n${formatAnnotationAsPrompt(annotation)}`;
   });
 
-  return [...header, ...items.join('\n\n---\n\n')].join('\n');
+  return [...header, items.join('\n\n---\n\n')].join('\n');
 }
 
 /**
@@ -118,7 +118,7 @@ export function formatHandoffPrompt(
       (a, i) =>
         `### ${i + 1}. \`<${a.element.tagName}>\` — ${a.element.name}\n\n- **ID:** \`${a.id}\`\n${formatAnnotationFields(a).join('\n')}`,
     );
-    return [...header, ...items.join('\n\n---\n\n')].join('\n');
+    return [...header, items.join('\n\n---\n\n')].join('\n');
   }
 
   // Paste-off mode (localStorage / no REST source): data + instructions,
@@ -142,5 +142,5 @@ export function formatHandoffPrompt(
     (a, i) =>
       `### ${i + 1}. \`<${a.element.tagName}>\` — ${a.element.name}\n\n${formatAnnotationFields(a).join('\n')}`,
   );
-  return [...header, ...items.join('\n\n---\n\n')].join('\n');
+  return [...header, items.join('\n\n---\n\n')].join('\n');
 }
