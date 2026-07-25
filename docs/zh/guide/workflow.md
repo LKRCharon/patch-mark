@@ -25,7 +25,7 @@
 - **Status:** open
 ```
 
-**Component** 和 **Source** 两行只在页面跑 React 或 Vue 的 **dev 构建**时出现：patch-mark 读取框架的组件树和 JSX 源码映射，agent 可以直接跳到文件，不必再用 selector 全文搜索。生产/minify 构建不携带这些元数据——输出和以前完全一致。
+**Component** 和 **Source** 两行只在页面跑 React 或 Vue 的 **dev 构建**时出现：patch-mark 读取框架的组件树和 JSX 源码映射，agent 可以直接跳到文件，不必再用 selector 全文搜索。生产/minify 构建不携带这些元数据——输出和以前完全一致。（注意：React 19 移除了 JSX 源码映射——React 19 下仍有 **Component**，**Source** 需要 React ≤ 18 或 Vue。）
 
 compose 面板和 list 面板各有一个"Copy as prompt"按钮。也可以编程调用：
 
@@ -92,6 +92,21 @@ PATCH 标 resolved。一轮清完所有 open 项，最后输出编号汇总。
 ```
 
 localStorage 模式下 agent 摸不到 store，所以标记 resolved 靠手动——验收后在列表面板逐条点勾。REST 模式下 agent 自己闭环，面板里的条目会实时逐项打勾。
+
+**连粘贴都省掉：MCP server。** 如果你的 agent 支持 MCP（Claude Code、Cursor、Codex…），注册 `patch-mark-mcp` 后 agent 直接和 endpoint 对话——完全不复制 prompt：
+
+```json
+{
+  "mcpServers": {
+    "patch-mark": {
+      "command": "npx",
+      "args": ["-y", "patch-mark-mcp", "--endpoint", "http://localhost:3000/api/annotations"]
+    }
+  }
+}
+```
+
+server 暴露两个 tool：`list_open_annotations`（GET open 项，可按页面过滤）和 `resolve_annotation`（PATCH 标 resolved）。endpoint 开了 `requireAuth` 时传 `--token <token>`（或环境变量 `PATCH_MARK_TOKEN`）。
 
 ## 解决生命周期
 

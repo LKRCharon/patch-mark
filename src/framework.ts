@@ -3,9 +3,10 @@
  *
  * React attaches a fiber to every DOM node it renders (`__reactFiber$*`).
  * Walking the `.return` chain finds the enclosing component, and dev builds
- * carry `_debugSource` (file/line injected by the JSX dev transform). Vue 3
- * attaches `__vueParentComponent`; SFCs expose `__name`/`__file` in dev.
- * Everything here is opportunistic: production/minified builds yield {}.
+ * ≤ React 18 carry `_debugSource` (file/line injected by the JSX dev
+ * transform — removed in React 19, where only component names survive).
+ * Vue 3 attaches `__vueParentComponent`; SFCs expose `__name`/`__file` in
+ * dev. Everything here is opportunistic: production/minified builds yield {}.
  */
 
 export type FrameworkInfo = {

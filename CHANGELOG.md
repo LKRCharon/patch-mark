@@ -4,6 +4,53 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-07-23
+
+### Added
+
+- **MCP server (`patch-mark-mcp`).** Agents that speak MCP (Claude Code,
+  Cursor, Codex, …) now read and resolve annotations directly — no prompt
+  copying at all. Two tools: `list_open_annotations` (GET open items,
+  optionally filtered by page) and `resolve_annotation` (PATCH an item
+  resolved). Zero-runtime-dependency stdio server (newline-delimited
+  JSON-RPC), with `--token` / `PATCH_MARK_TOKEN` matching the fetch
+  store's Bearer convention:
+  `npx patch-mark-mcp --endpoint http://localhost:3000/api/annotations`.
+
+### Fixed
+
+- **Framework detection fields never reached saved annotations.**
+  `toElementTarget` copied an explicit field list and silently dropped the
+  0.8.0 `component`/`source` fields on the pick → submit path (only
+  expand/shrink kept them). It now strips picker extras by destructuring,
+  so future `ElementTarget` fields survive too.
+- **IME composition no longer triggers shortcuts.** Esc/Enter pressed to
+  drive a CJK candidate window (`isComposing`) no longer unwinds the tool
+  or submits the draft.
+- **Re-entering picking no longer leaks listeners or strands paused
+  videos.** A second `startPicking` (panel "picker" tab, `open()` API)
+  left the old mousemove/click listeners attached and cleared the video
+  resume list — freezing page videos until reload. setupPicking now cleans
+  up first.
+- **Element re-attachment no longer breaks the component.** Moving the
+  `<patch-mark>` node in the DOM re-fired `connectedCallback` and
+  `attachShadow` threw on the existing root; the shadow is now reused and
+  document-level listeners re-registered.
+- **Cmd/Ctrl+Enter only fires from inside the panel** — the host page's
+  own binding keeps working while composing.
+- **Escape keeps the draft and covers locked mode.** compose → picking no
+  longer discards the typed message; the locked panel can now be closed
+  with Esc.
+- **Videos that ended while paused are not restarted** on resume.
+- **Clicks on the page background (`<body>`/`<html>`) no longer create
+  annotations with an empty selector** that could never be located later.
+
+### Changed
+
+- Docs: **Source** line caveat for React 19 (JSX source mapping removed;
+  **Component** still works), MCP setup section in the workflow guide
+  (EN/ZH).
+
 ## [0.8.0] - 2026-07-23
 
 ### Added

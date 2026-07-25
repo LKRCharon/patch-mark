@@ -25,7 +25,7 @@ Every annotation can be copied as structured Markdown, ready to paste into any A
 - **Status:** open
 ```
 
-The **Component** and **Source** lines appear when the page runs a React or Vue **dev build**: patch-mark reads the framework's component tree and the JSX source mapping, so the agent jumps straight to the file instead of grepping for the selector. Production/minified builds expose no such metadata — output there is exactly as before.
+The **Component** and **Source** lines appear when the page runs a React or Vue **dev build**: patch-mark reads the framework's component tree and the JSX source mapping, so the agent jumps straight to the file instead of grepping for the selector. Production/minified builds expose no such metadata — output there is exactly as before. (Note: React 19 removed the JSX source mapping — there you still get **Component**, but **Source** needs React ≤ 18 or Vue.)
 
 The compose panel and list panel each have a "Copy as prompt" button. You can also call it programmatically:
 
@@ -105,6 +105,26 @@ With localStorage the agent can't reach the store, so resolving stays
 manual — you click the check button per item in the list panel after
 verifying. With the REST store the agent closes the loop itself, and the
 panel ticks items off in real time.
+
+**Skip the paste entirely: the MCP server.** If your agent supports MCP
+(Claude Code, Cursor, Codex, …), register `patch-mark-mcp` and the agent
+talks to the endpoint itself — no prompt copying at all:
+
+```json
+{
+  "mcpServers": {
+    "patch-mark": {
+      "command": "npx",
+      "args": ["-y", "patch-mark-mcp", "--endpoint", "http://localhost:3000/api/annotations"]
+    }
+  }
+}
+```
+
+The server exposes two tools: `list_open_annotations` (GET open items,
+optionally filtered by page) and `resolve_annotation` (PATCH an item
+resolved). Pass `--token <token>` (or the `PATCH_MARK_TOKEN` env var) when
+the endpoint is protected by `requireAuth`.
 
 ## Resolve lifecycle
 

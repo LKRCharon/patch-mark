@@ -264,50 +264,58 @@ export class PatchMark extends BaseHTMLElement {
   connectedCallback(): void {
     injectGlobalStyles();
 
-    this.shadow = this.attachShadow({ mode: 'open' });
+    // Re-attachment guard: moving this element in the DOM re-fires
+    // connectedCallback, and attachShadow throws when a root already exists.
+    // Reuse the existing shadow (its DOM-level listeners survive); only
+    // document-level listeners need re-registering below.
+    if (this.shadowRoot) {
+      this.shadow = this.shadowRoot;
+    } else {
+      this.shadow = this.attachShadow({ mode: 'open' });
 
-    // Inject styles
-    const styleEl = document.createElement('style');
-    styleEl.textContent = shadowStyles;
-    this.shadow.appendChild(styleEl);
+      // Inject styles
+      const styleEl = document.createElement('style');
+      styleEl.textContent = shadowStyles;
+      this.shadow.appendChild(styleEl);
 
-    // Build overlay container
-    this.overlayEl = document.createElement('div');
-    this.overlayEl.className = `${CLASS_PREFIX}-overlay`;
-    this.overlayEl.style.display = 'none';
-    this.overlayEl.setAttribute(UI_ATTR, '');
-    this.shadow.appendChild(this.overlayEl);
+      // Build overlay container
+      this.overlayEl = document.createElement('div');
+      this.overlayEl.className = `${CLASS_PREFIX}-overlay`;
+      this.overlayEl.style.display = 'none';
+      this.overlayEl.setAttribute(UI_ATTR, '');
+      this.shadow.appendChild(this.overlayEl);
 
-    // Build panel container
-    this.panelEl = document.createElement('div');
-    this.panelEl.className = `${CLASS_PREFIX}-panel`;
-    this.panelEl.style.display = 'none';
-    this.panelEl.setAttribute(UI_ATTR, '');
-    this.shadow.appendChild(this.panelEl);
+      // Build panel container
+      this.panelEl = document.createElement('div');
+      this.panelEl.className = `${CLASS_PREFIX}-panel`;
+      this.panelEl.style.display = 'none';
+      this.panelEl.setAttribute(UI_ATTR, '');
+      this.shadow.appendChild(this.panelEl);
 
-    // Build launcher
-    this.launcherEl = document.createElement('button');
-    this.launcherEl.className = `${CLASS_PREFIX}-launcher`;
-    this.launcherEl.type = 'button';
-    this.setupLauncherInteraction();
-    this.shadow.appendChild(this.launcherEl);
-    this.restoreLauncherState();
+      // Build launcher
+      this.launcherEl = document.createElement('button');
+      this.launcherEl.className = `${CLASS_PREFIX}-launcher`;
+      this.launcherEl.type = 'button';
+      this.setupLauncherInteraction();
+      this.shadow.appendChild(this.launcherEl);
+      this.restoreLauncherState();
 
-    // Delegate panel clicks
-    this.panelEl.addEventListener('click', (e) => this.handlePanelClick(e));
-    this.panelEl.addEventListener('input', (e) => this.handlePanelInput(e));
-    this.panelEl.addEventListener('keydown', (e) => this.handlePanelKeyDown(e));
+      // Delegate panel clicks
+      this.panelEl.addEventListener('click', (e) => this.handlePanelClick(e));
+      this.panelEl.addEventListener('input', (e) => this.handlePanelInput(e));
+      this.panelEl.addEventListener('keydown', (e) => this.handlePanelKeyDown(e));
+
+      // Drag-and-drop for list reordering
+      this.panelEl.addEventListener('mousedown', (e) => this.handleDragHandleDown(e));
+      this.panelEl.addEventListener('mouseup', () => this.resetDraggable());
+      this.panelEl.addEventListener('dragstart', (e) => this.handleDragStart(e));
+      this.panelEl.addEventListener('dragover', (e) => this.handleDragOver(e));
+      this.panelEl.addEventListener('drop', (e) => this.handleDrop(e));
+      this.panelEl.addEventListener('dragend', () => this.handleDragEnd());
+    }
 
     // Global shortcuts (Escape / Cmd+Enter); inert while the tool is closed
     document.addEventListener('keydown', this.globalKeyDownHandler);
-
-    // Drag-and-drop for list reordering
-    this.panelEl.addEventListener('mousedown', (e) => this.handleDragHandleDown(e));
-    this.panelEl.addEventListener('mouseup', () => this.resetDraggable());
-    this.panelEl.addEventListener('dragstart', (e) => this.handleDragStart(e));
-    this.panelEl.addEventListener('dragover', (e) => this.handleDragOver(e));
-    this.panelEl.addEventListener('drop', (e) => this.handleDrop(e));
-    this.panelEl.addEventListener('dragend', () => this.handleDragEnd());
 
     // Apply theme overrides
     this.applyTheme();
@@ -405,6 +413,10 @@ export class PatchMark extends BaseHTMLElement {
   // ---- Picking mode ----
 
   private setupPicking(): void {
+    // Re-entry guard: a second startPicking (panel "picker" tab, open() API)
+    // must not leak the previous listeners or strand the videos we paused.
+    this.cleanupPicking();
+
     this.boundMove = (e: MouseEvent) => this.handleMove(e);
     this.boundClick = (e: MouseEvent) => this.handleClick(e);
 
@@ -440,7 +452,8 @@ export class PatchMark extends BaseHTMLElement {
     this.boundClick = null;
 
     for (const video of this.pausedVideos) {
-      video.play().catch(() => {});
+      // A video that ended on its own while paused must not restart from zero.
+      if (!video.ended) video.play().catch(() => {});
     }
     this.pausedVideos = [];
 
@@ -453,6 +466,9 @@ export class PatchMark extends BaseHTMLElement {
   private getTargetAtPoint(clientX: number, clientY: number): PickerTarget | null {
     const element = document.elementFromPoint(clientX, clientY);
     if (!(element instanceof HTMLElement)) return null;
+    // Page background clicks yield an empty selector that can never be
+    // located later — treat them as no target.
+    if (element === document.body || element === document.documentElement) return null;
     // Exclude the component itself
     if (element.closest(ELEMENT_TAG)) return null;
 
@@ -510,19 +526,28 @@ export class PatchMark extends BaseHTMLElement {
   }
 
   // Global keyboard shortcuts. Escape unwinds one layer at a time
-  // (compose → picking → closed; list → closed); Cmd/Ctrl+Enter submits the
-  // annotation being composed. Inert while the tool is closed, so page-level
-  // shortcuts are never hijacked.
+  // (compose → picking → closed; list/locked → closed); Cmd/Ctrl+Enter from
+  // inside the panel submits the annotation. Inert while the tool is closed
+  // and during IME composition (CJK Esc/Enter belong to the candidate window).
   private globalKeyDownHandler = (e: KeyboardEvent): void => {
+    if (e.isComposing) return;
+
     if (e.key === 'Escape') {
-      if (this.mode === 'picking' || this.mode === 'list') {
+      if (this.mode === 'picking' || this.mode === 'list' || this.mode === 'locked') {
         this.closeTool();
       } else if (this.mode === 'compose') {
+        // Back to picking, but keep the draft so re-selecting an element
+        // restores the text instead of losing it.
+        const draft = this.message;
         this.startPicking();
+        this.message = draft;
       }
       return;
     }
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && this.mode === 'compose') {
+      // Only honor Cmd/Ctrl+Enter from inside our own panel — the host
+      // page's binding (if any) keeps working while the panel is open.
+      if (!this.panelEl || !e.composedPath().includes(this.panelEl)) return;
       if (this.message.trim() && !this.isSubmitting) {
         e.preventDefault();
         this.submitAnnotation();

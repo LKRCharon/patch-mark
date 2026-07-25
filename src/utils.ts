@@ -22,13 +22,11 @@ export function describeElement(element: HTMLElement): ElementTarget {
 }
 
 export function toElementTarget(target: PickerTarget): ElementTarget {
-  return {
-    tagName: target.tagName,
-    name: target.name,
-    selector: target.selector,
-    text: target.text,
-    rect: target.rect,
-  };
+  // Strip picker-only extras, keep everything else (including the 0.8.0
+  // component/source fields — an explicit field list here silently dropped
+  // them once already).
+  const { viewportRect: _viewportRect, hoverInfo: _hoverInfo, ...elementTarget } = target;
+  return elementTarget;
 }
 
 function getElementName(element: HTMLElement, tagName: string): string {
