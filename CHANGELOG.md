@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2026-07-23
+
+### Fixed
+
+- **Stray click after a text-selection gesture no longer reaches the
+  page.** The browser dispatches a click to the gesture's common ancestor
+  after the mouseup that formed the selection — by then the picking
+  capture listener is gone, so the click toggled checkboxes inside labels,
+  followed links, or opened modals. A one-shot suppressor now swallows
+  exactly that click (and disarms itself if the gesture produced none).
+- **Text-selection annotations spanning to `<body>` no longer save an
+  empty selector.** Cross-paragraph selections whose common ancestor is
+  `document.body` are now skipped, matching the 0.9.0 guard for
+  background clicks.
+- **Re-attaching the element while the tool is open restores the mode
+  listeners.** The 0.9.0 shadow-reuse fix re-registered only the global
+  keydown; picking (mousemove/click/mouseup) and compose (scroll/resize
+  tracking) went silently dead after a DOM move until reopened.
+- **Right-button mouseup no longer turns an existing selection into an
+  annotation.** Only the primary button completes the gesture.
+- **`patch-mark-mcp` rejects a malformed `--endpoint` at startup**
+  (`new URL` check) instead of failing every tool call at runtime — e.g.
+  when the flag swallowed the following argument.
+
 ## [0.9.1] - 2026-07-23
 
 ### Added

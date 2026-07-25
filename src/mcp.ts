@@ -183,6 +183,13 @@ export function parseArgs(
         'Example: npx patch-mark-mcp --endpoint http://localhost:3000/api/annotations',
     );
   }
+  // Fail fast on a malformed URL (e.g. `--endpoint --token x` swallowing the
+  // next flag) instead of erroring on every tool call at runtime.
+  try {
+    new URL(endpoint);
+  } catch {
+    throw new Error(`Invalid endpoint URL: ${endpoint}`);
+  }
   // A trailing slash would produce "//{id}" on the PATCH path.
   return { endpoint: endpoint.replace(/\/+$/, ''), token };
 }

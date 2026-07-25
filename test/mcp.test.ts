@@ -192,3 +192,8 @@ test('parseArgs reads --endpoint (both forms), env fallback, trims trailing slas
 test('parseArgs throws without an endpoint', () => {
   assert.throws(() => parseArgs([], {}), /Missing endpoint/);
 });
+
+test('parseArgs rejects a malformed endpoint URL', () => {
+  assert.throws(() => parseArgs(['--endpoint', '--token'], {}), /Invalid endpoint URL/);
+  assert.throws(() => parseArgs(['--endpoint', 'not-a-url'], {}), /Invalid endpoint URL/);
+});

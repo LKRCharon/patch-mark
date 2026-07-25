@@ -268,7 +268,8 @@ export class PatchMark extends BaseHTMLElement {
     // connectedCallback, and attachShadow throws when a root already exists.
     // Reuse the existing shadow (its DOM-level listeners survive); only
     // document-level listeners need re-registering below.
-    if (this.shadowRoot) {
+    const reattached = this.shadowRoot !== null;
+    if (reattached) {
       this.shadow = this.shadowRoot;
     } else {
       this.shadow = this.attachShadow({ mode: 'open' });
@@ -316,6 +317,14 @@ export class PatchMark extends BaseHTMLElement {
 
     // Global shortcuts (Escape / Cmd+Enter); inert while the tool is closed
     document.addEventListener('keydown', this.globalKeyDownHandler);
+
+    if (reattached) {
+      // disconnectedCallback tore down the mode-specific listeners while
+      // the tool was open — restore them for the current mode.
+      if (this.mode === 'picking') this.setupPicking();
+      else if (this.mode === 'compose') this.setupComposeTracking();
+      this.updateOverlay();
+    }
 
     // Apply theme overrides
     this.applyTheme();
@@ -518,6 +527,7 @@ export class PatchMark extends BaseHTMLElement {
   // greps for; the ancestor element supplies selector/styles.
   private handleMouseUp = (e: MouseEvent): void => {
     if (this.mode !== 'picking') return;
+    if (e.button !== 0) return;
     // Events originating from our own UI must not start an annotation.
     if (e.composedPath().includes(this)) return;
     const selection = window.getSelection();
@@ -527,7 +537,10 @@ export class PatchMark extends BaseHTMLElement {
     const range = selection.getRangeAt(0);
     const container = range.commonAncestorContainer;
     const element = container instanceof HTMLElement ? container : container.parentElement;
-    if (!element || element.closest(ELEMENT_TAG)) return;
+    // Same guard as getTargetAtPoint: a body/html ancestor yields an empty
+    // selector that could never be located later.
+    if (!element || element === document.body || element === document.documentElement) return;
+    if (element.closest(ELEMENT_TAG)) return;
     const rect = range.getBoundingClientRect();
     if (rect.width < 2 || rect.height < 2) return;
 
@@ -547,6 +560,25 @@ export class PatchMark extends BaseHTMLElement {
     // Our overlay draws the persistent frame; the native selection would
     // fight it visually.
     selection.removeAllRanges();
+
+    // The browser still dispatches a click to the gesture's common ancestor
+    // after the mouseup that formed the selection. Our capture listener is
+    // already gone (cleanupPicking ran inside enterCompose), so without this
+    // one-shot suppressor the stray click reaches the page — toggling
+    // checkboxes inside labels, following links, opening modals.
+    const suppress = (ev: Event): void => {
+      ev.preventDefault();
+      ev.stopPropagation();
+    };
+    document.addEventListener('click', suppress, { capture: true, once: true });
+    // Disarm if the next mousedown arrives first (the gesture produced no
+    // click, e.g. mouseup happened outside the window) so the suppressor
+    // can't eat a later, legitimate click.
+    document.addEventListener(
+      'mousedown',
+      () => document.removeEventListener('click', suppress, true),
+      { capture: true, once: true },
+    );
   };
 
   private enterCompose(target: ElementTarget, element: HTMLElement | null): void {
