@@ -88,6 +88,21 @@ test('single: no component/source lines when absent', () => {
   assert.ok(!out.includes('**Source:**'));
 });
 
+test('single: renders the quote for text-selection annotations', () => {
+  const base = makeAnnotation();
+  const out = formatAnnotationAsPrompt(
+    makeAnnotation({ element: { ...base.element, quote: 'Submit Application' } }),
+  );
+  assert.ok(out.includes('- **Quote:** "Submit Application"'));
+  // Text (whole element) and Quote (user's selection) are separate lines.
+  assert.ok(out.includes('- **Text:** "Save changes"'));
+});
+
+test('single: no quote line for plain element annotations', () => {
+  const out = formatAnnotationAsPrompt(makeAnnotation());
+  assert.ok(!out.includes('**Quote:**'));
+});
+
 // --- formatAnnotationsAsPrompt ---
 
 test('batch: empty list', () => {

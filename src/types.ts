@@ -8,6 +8,8 @@ export type ElementTarget = {
   component?: string;
   /** Project-relative source location, e.g. "src/Button.tsx:42" (dev builds only). */
   source?: string;
+  /** Exact text the user selected within the element (text-selection annotations). */
+  quote?: string;
 };
 
 export type HoverInfo = {

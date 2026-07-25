@@ -12,6 +12,7 @@ test('toElementTarget strips picker extras, keeps ElementTarget fields incl. com
     rect: { top: 1, left: 2, width: 3, height: 4 },
     component: 'Card',
     source: 'src/Card.tsx:12',
+    quote: 'Hello',
     viewportRect: {} as DOMRect,
     hoverInfo: { color: 'red', fontSize: '16px', fontFamily: 'Inter' },
   };
@@ -24,6 +25,7 @@ test('toElementTarget strips picker extras, keeps ElementTarget fields incl. com
     rect: { top: 1, left: 2, width: 3, height: 4 },
     component: 'Card',
     source: 'src/Card.tsx:12',
+    quote: 'Hello',
   });
   assert.equal('viewportRect' in el, false);
   assert.equal('hoverInfo' in el, false);

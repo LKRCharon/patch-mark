@@ -53,6 +53,23 @@ export default function PatchMarkClient() {
 
 Gate it by environment where you render it: `{process.env.NODE_ENV !== 'production' && <PatchMarkClient />}`.
 
+## Let the agent read annotations itself (MCP)
+
+With a REST store (`createFetchStore`), agents that speak MCP — Claude Code, Cursor, Codex — pull open annotations and mark them resolved directly. No copy-pasting:
+
+```json
+{
+  "mcpServers": {
+    "patch-mark": {
+      "command": "npx",
+      "args": ["-y", "patch-mark-mcp", "--endpoint", "http://localhost:3000/api/annotations"]
+    }
+  }
+}
+```
+
+Two tools: `list_open_annotations` and `resolve_annotation`. No MCP? The list panel's **handoff bar** copies a self-serve prompt that walks any agent through the same loop. Annotate a batch, hand it off, watch the panel tick items off.
+
 ## Themes
 
 | Theme | Accent | Works well on |

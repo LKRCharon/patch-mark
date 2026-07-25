@@ -422,6 +422,7 @@ export class PatchMark extends BaseHTMLElement {
 
     document.addEventListener('mousemove', this.boundMove, true);
     document.addEventListener('click', this.boundClick, true);
+    document.addEventListener('mouseup', this.handleMouseUp);
     window.addEventListener('scroll', this.refreshHover, true);
     window.addEventListener('resize', this.refreshHover);
 
@@ -445,6 +446,7 @@ export class PatchMark extends BaseHTMLElement {
 
     if (this.boundMove) document.removeEventListener('mousemove', this.boundMove, true);
     if (this.boundClick) document.removeEventListener('click', this.boundClick, true);
+    document.removeEventListener('mouseup', this.handleMouseUp);
     window.removeEventListener('scroll', this.refreshHover, true);
     window.removeEventListener('resize', this.refreshHover);
 
@@ -507,9 +509,49 @@ export class PatchMark extends BaseHTMLElement {
     e.preventDefault();
     e.stopPropagation();
 
-    this.selectedTarget = toElementTarget(target);
     const element = document.elementFromPoint(e.clientX, e.clientY);
-    this.selectedElement = element instanceof HTMLElement ? element : null;
+    this.enterCompose(toElementTarget(target), element instanceof HTMLElement ? element : null);
+  }
+
+  // Text-selection annotations: dragging across text in picking mode turns
+  // the selection into an annotation target — the quote is what the agent
+  // greps for; the ancestor element supplies selector/styles.
+  private handleMouseUp = (e: MouseEvent): void => {
+    if (this.mode !== 'picking') return;
+    // Events originating from our own UI must not start an annotation.
+    if (e.composedPath().includes(this)) return;
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
+    const quote = selection.toString().replace(/\s+/g, ' ').trim();
+    if (!quote) return;
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    const element = container instanceof HTMLElement ? container : container.parentElement;
+    if (!element || element.closest(ELEMENT_TAG)) return;
+    const rect = range.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return;
+
+    this.enterCompose(
+      {
+        ...describeElement(element),
+        quote: quote.slice(0, 240),
+        rect: {
+          top: Math.round(rect.top + window.scrollY),
+          left: Math.round(rect.left + window.scrollX),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        },
+      },
+      element,
+    );
+    // Our overlay draws the persistent frame; the native selection would
+    // fight it visually.
+    selection.removeAllRanges();
+  };
+
+  private enterCompose(target: ElementTarget, element: HTMLElement | null): void {
+    this.selectedTarget = target;
+    this.selectedElement = element;
     this.selectionPath = [];
     this.hoveredTarget = null;
     this.showProperties = false;
@@ -651,7 +693,12 @@ export class PatchMark extends BaseHTMLElement {
 
   // Compose mode: if the selected element sits under the panel, slide the
   // panel to the opposite side. Triggered by element position, not pointer.
-  private updateComposeDodge(elementRect: DOMRect): void {
+  private updateComposeDodge(elementRect: {
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+  }): void {
     if (!this.panelEl || window.innerWidth <= 640) return;
     const panelRect = this.panelEl.getBoundingClientRect();
     const overlaps =
@@ -1313,7 +1360,18 @@ export class PatchMark extends BaseHTMLElement {
       return;
     }
 
-    const rect = element.getBoundingClientRect();
+    const rect = this.selectedTarget.quote
+      ? {
+          // Text-selection target: the quote rect is static (document coords
+          // captured at selection time); convert to viewport on each render.
+          top: this.selectedTarget.rect.top - window.scrollY,
+          left: this.selectedTarget.rect.left - window.scrollX,
+          width: this.selectedTarget.rect.width,
+          height: this.selectedTarget.rect.height,
+          right: this.selectedTarget.rect.left - window.scrollX + this.selectedTarget.rect.width,
+          bottom: this.selectedTarget.rect.top - window.scrollY + this.selectedTarget.rect.height,
+        }
+      : element.getBoundingClientRect();
     this.updateComposeDodge(rect);
     const labelTop = rect.top > 34 + 10 ? rect.top - 34 : rect.bottom + 8;
     const labelLeft = Math.min(Math.max(rect.left, 8), window.innerWidth - 240);

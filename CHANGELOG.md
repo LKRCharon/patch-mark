@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-07-23
+
+### Added
+
+- **Text-selection annotations.** Dragging across text in picking mode
+  annotates the exact phrase: the quote lands in a new `**Quote:**` prompt
+  line (the agent greps for it verbatim), the ancestor element supplies
+  the selector and styles, and the compose frame hugs the selection rect.
+  Handoff prompts (both modes) now list the Quote as a locating hint.
+- Docs: MCP server added to the README main flow; text-selection note in
+  getting started (EN/ZH).
+
 ## [0.9.0] - 2026-07-23
 
 ### Added

@@ -11,7 +11,7 @@ This is not an annotation library for human review — it's specifically the **f
 <patch-mark visible></patch-mark>
 ```
 
-Click the floating button, hover over any element, click to select, write your comment, and hit send. Annotations persist in `localStorage`.
+Click the floating button, hover over any element, click to select — or drag across text to annotate an exact phrase — write your comment, and hit send. Annotations persist in `localStorage`.
 
 The floating button is draggable — drag it anywhere, or drag it to a screen edge (or hit the small collapse button that appears on hover) to tuck it into a slim edge tab. Hover the tab to peek it back out, click to restore. Position and collapse state persist across reloads.
 

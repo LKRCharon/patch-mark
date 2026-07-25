@@ -25,6 +25,10 @@ function formatAnnotationFields(annotation: Annotation): string[] {
     lines.push(`- **Text:** "${el.text}"`);
   }
 
+  if (el.quote) {
+    lines.push(`- **Quote:** "${el.quote}"`);
+  }
+
   lines.push(
     `- **Position:** top=${el.rect.top}, left=${el.rect.left}, ${el.rect.width}x${el.rect.height}`,
     `- **Page:** ${annotation.pagePath}`,
@@ -114,7 +118,7 @@ export function formatHandoffPrompt(
       '',
       '## Lifecycle rules',
       '- Only touch items with status "open". Already-resolved items are done — skip them.',
-      '- For each open item: locate the element in the codebase (grep the Selector\'s distinctive class/id, or the visible Text; the Page field maps to the route), apply the Feedback ("Property Changes" are exact `property: from → to`), then PATCH that item resolved.',
+      '- For each open item: locate the element in the codebase (grep the Selector\'s distinctive class/id, the visible Text, or the exact Quote; the Page field maps to the route), apply the Feedback ("Property Changes" are exact `property: from → to`), then PATCH that item resolved.',
       '- Don\'t pause for confirmation between items — fix and move on.',
       '- When every open item is resolved, reply with a numbered summary: what changed per item and which files you touched.',
       '',
@@ -137,7 +141,7 @@ export function formatHandoffPrompt(
     `- **Open Items:** ${open.length}`,
     '',
     'How to work the batch:',
-    '1. Locate each element in the codebase: grep for a distinctive class or id from the Selector, or for the visible Text. The Page field maps to the route/component.',
+    '1. Locate each element in the codebase: grep for a distinctive class or id from the Selector, for the visible Text, or for the exact Quote. The Page field maps to the route/component.',
     '2. Apply the Feedback. "Property Changes" lines are exact instructions (`property: from → to`); otherwise follow the Feedback text and match the project\'s existing styling conventions.',
     '3. Don\'t pause for confirmation between items — make the edit and move on.',
     '',
