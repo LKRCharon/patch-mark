@@ -4,6 +4,10 @@ export type ElementTarget = {
   selector: string;
   text: string;
   rect: { top: number; left: number; width: number; height: number };
+  /** Nearest framework component name (React/Vue dev builds only). */
+  component?: string;
+  /** Project-relative source location, e.g. "src/Button.tsx:42" (dev builds only). */
+  source?: string;
 };
 
 export type HoverInfo = {

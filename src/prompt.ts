@@ -14,6 +14,13 @@ function formatAnnotationFields(annotation: Annotation): string[] {
     `- **Name:** ${el.name}`,
   ];
 
+  if (el.component) {
+    lines.push(`- **Component:** \`<${el.component}>\``);
+  }
+  if (el.source) {
+    lines.push(`- **Source:** ${el.source}`);
+  }
+
   if (el.text) {
     lines.push(`- **Text:** "${el.text}"`);
   }

@@ -51,6 +51,16 @@ export default function PatchMark() {
 }
 ```
 
+::: warning Turbopack 可能丢掉动态导入
+在 Next.js + Turbopack 下，对 npm 包的动态 `import('patch-mark')` 可能在**生产**构建里被悄悄丢掉——模块没执行、`customElements.define()` 没跑，`<patch-mark>` 留在 DOM 里却没有 shadow root，表现为空白/透明的框。判断信号：元素在 DOM 里但**没有 shadow root**。
+
+踩到的话：
+
+- 在 `next.config.ts` 的 [`transpilePackages`](https://nextjs.org/docs/app/api-reference/config/next-config-js/transpilePackages) 里加上 `patch-mark`，让打包器始终包含它。
+- 保持 `import()` 参数为字符串字面量——变量无法被任何打包器静态解析。
+- 或者干脆绕过打包器，用 CDN 标签：`<script type="module" src="https://unpkg.com/patch-mark"></script>`。
+:::
+
 ## Vue
 
 ```vue

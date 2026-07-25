@@ -8,3 +8,5 @@ promo/
 # VitePress build output and cache
 docs/.vitepress/dist
 docs/.vitepress/cache
+# esbuild-compiled test output
+.test-dist/

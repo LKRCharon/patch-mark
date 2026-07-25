@@ -1,4 +1,5 @@
 import type { ElementTarget, PickerTarget } from './types.js';
+import { detectFramework } from './framework.js';
 
 export function describeElement(element: HTMLElement): ElementTarget {
   const rect = element.getBoundingClientRect();
@@ -15,6 +16,8 @@ export function describeElement(element: HTMLElement): ElementTarget {
       width: Math.round(rect.width),
       height: Math.round(rect.height),
     },
+    // React/Vue dev builds only; {} in production.
+    ...detectFramework(element),
   };
 }
 

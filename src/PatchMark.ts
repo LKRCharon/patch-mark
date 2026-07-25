@@ -166,7 +166,8 @@ export class PatchMark extends BaseHTMLElement {
   // Event handler refs (for cleanup)
   private boundMove: ((e: MouseEvent) => void) | null = null;
   private boundClick: ((e: MouseEvent) => void) | null = null;
-  private boundKeyDown: ((e: KeyboardEvent) => void) | null = null;
+  /** Videos we paused on entering picking mode; resumed on cleanup. */
+  private pausedVideos: HTMLVideoElement[] = [];
   private pointerRef: { clientX: number; clientY: number } | null = null;
   private locateTimeout: number | undefined;
   private rafId: number | undefined;
@@ -297,6 +298,9 @@ export class PatchMark extends BaseHTMLElement {
     this.panelEl.addEventListener('input', (e) => this.handlePanelInput(e));
     this.panelEl.addEventListener('keydown', (e) => this.handlePanelKeyDown(e));
 
+    // Global shortcuts (Escape / Cmd+Enter); inert while the tool is closed
+    document.addEventListener('keydown', this.globalKeyDownHandler);
+
     // Drag-and-drop for list reordering
     this.panelEl.addEventListener('mousedown', (e) => this.handleDragHandleDown(e));
     this.panelEl.addEventListener('mouseup', () => this.resetDraggable());
@@ -316,7 +320,7 @@ export class PatchMark extends BaseHTMLElement {
   disconnectedCallback(): void {
     this.cleanupPicking();
     this.cleanupComposeTracking();
-    this.removeKeyDownListener();
+    document.removeEventListener('keydown', this.globalKeyDownHandler);
     document.removeEventListener('pointermove', this.boundLauncherMove);
     document.removeEventListener('pointerup', this.boundLauncherUp);
     document.removeEventListener('pointercancel', this.boundLauncherUp);
@@ -403,15 +407,24 @@ export class PatchMark extends BaseHTMLElement {
   private setupPicking(): void {
     this.boundMove = (e: MouseEvent) => this.handleMove(e);
     this.boundClick = (e: MouseEvent) => this.handleClick(e);
-    this.boundKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e);
 
     document.addEventListener('mousemove', this.boundMove, true);
     document.addEventListener('click', this.boundClick, true);
-    document.addEventListener('keydown', this.boundKeyDown);
     window.addEventListener('scroll', this.refreshHover, true);
     window.addEventListener('resize', this.refreshHover);
 
     document.documentElement.classList.add(PICKER_ACTIVE_CLASS);
+
+    // Freeze looping background videos for a stable picking target (CSS
+    // animations are paused by the picker-active global styles). Only the
+    // videos we paused get resumed in cleanupPicking.
+    this.pausedVideos = [];
+    document.querySelectorAll('video').forEach((video) => {
+      if (!video.paused) {
+        video.pause();
+        this.pausedVideos.push(video);
+      }
+    });
   }
 
   private cleanupPicking(): void {
@@ -420,13 +433,16 @@ export class PatchMark extends BaseHTMLElement {
 
     if (this.boundMove) document.removeEventListener('mousemove', this.boundMove, true);
     if (this.boundClick) document.removeEventListener('click', this.boundClick, true);
-    if (this.boundKeyDown) document.removeEventListener('keydown', this.boundKeyDown);
     window.removeEventListener('scroll', this.refreshHover, true);
     window.removeEventListener('resize', this.refreshHover);
 
     this.boundMove = null;
     this.boundClick = null;
-    this.boundKeyDown = null;
+
+    for (const video of this.pausedVideos) {
+      video.play().catch(() => {});
+    }
+    this.pausedVideos = [];
 
     if (this.rafId !== undefined) {
       window.cancelAnimationFrame(this.rafId);
@@ -493,9 +509,26 @@ export class PatchMark extends BaseHTMLElement {
     if (textarea) textarea.focus();
   }
 
-  private handleKeyDown(e: KeyboardEvent): void {
-    if (e.key === 'Escape') this.closeTool();
-  }
+  // Global keyboard shortcuts. Escape unwinds one layer at a time
+  // (compose → picking → closed; list → closed); Cmd/Ctrl+Enter submits the
+  // annotation being composed. Inert while the tool is closed, so page-level
+  // shortcuts are never hijacked.
+  private globalKeyDownHandler = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') {
+      if (this.mode === 'picking' || this.mode === 'list') {
+        this.closeTool();
+      } else if (this.mode === 'compose') {
+        this.startPicking();
+      }
+      return;
+    }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && this.mode === 'compose') {
+      if (this.message.trim() && !this.isSubmitting) {
+        e.preventDefault();
+        this.submitAnnotation();
+      }
+    }
+  };
 
   private refreshHover = (): void => {
     if (!this.pointerRef) return;
@@ -607,13 +640,6 @@ export class PatchMark extends BaseHTMLElement {
       ? elementCenter > window.innerWidth / 2
       : elementCenter < window.innerWidth / 2;
     this.setDodgeSide(elementOnDockSide ? 'away' : 'dock');
-  }
-
-  private removeKeyDownListener(): void {
-    if (this.boundKeyDown) {
-      document.removeEventListener('keydown', this.boundKeyDown);
-      this.boundKeyDown = null;
-    }
   }
 
   // ---- Data operations ----
@@ -1431,7 +1457,7 @@ export class PatchMark extends BaseHTMLElement {
           </button>
           <span style="display:flex;gap:0.5rem;align-items:center">
             <button type="button" class="${CLASS_PREFIX}-back" data-action="reselect">${escapeHtml(this.labels.reselect)}</button>
-            <button type="button" class="${CLASS_PREFIX}-send" data-action="send" ${!this.message.trim() || this.isSubmitting ? 'disabled' : ''}>
+            <button type="button" class="${CLASS_PREFIX}-send" data-action="send" title="⌘/Ctrl+Enter" ${!this.message.trim() || this.isSubmitting ? 'disabled' : ''}>
               ${this.isSubmitting ? escapeHtml(this.labels.sending) : escapeHtml(this.labels.send)}
               ${ICONS.send}
             </button>

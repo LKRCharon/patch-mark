@@ -16,12 +16,16 @@
 - **Element:** `<button>`
 - **Selector:** `div.header > button.submit-btn`
 - **Name:** `#submit-btn`
+- **Component:** `<SubmitButton>`
+- **Source:** src/components/SubmitButton.tsx:42
 - **Text:** "Submit Application"
 - **Position:** top=320, left=480, 128x40
 - **Page:** /dashboard
 - **Feedback:** 按钮文字在移动端太小，建议增大到 16px
 - **Status:** open
 ```
+
+**Component** 和 **Source** 两行只在页面跑 React 或 Vue 的 **dev 构建**时出现：patch-mark 读取框架的组件树和 JSX 源码映射，agent 可以直接跳到文件，不必再用 selector 全文搜索。生产/minify 构建不携带这些元数据——输出和以前完全一致。
 
 compose 面板和 list 面板各有一个"Copy as prompt"按钮。也可以编程调用：
 

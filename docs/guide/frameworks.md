@@ -51,6 +51,16 @@ export default function PatchMark() {
 }
 ```
 
+::: warning Turbopack may drop the dynamic import
+With Next.js + Turbopack, a dynamic `import('patch-mark')` into an npm package can be silently left out of the **production** bundle — the module never runs, `customElements.define()` never fires, and `<patch-mark>` sits in the DOM with no shadow root, showing up as a blank/transparent box. Telltale sign: the element exists in the DOM but has **no shadow root**.
+
+If you hit this:
+
+- Add `patch-mark` to [`transpilePackages`](https://nextjs.org/docs/app/api-reference/config/next-config-js/transpilePackages) in `next.config.ts` so the bundler always includes it.
+- Keep the `import()` argument a string literal — a variable can't be statically resolved by any bundler.
+- Or sidestep the bundler entirely with the CDN tag: `<script type="module" src="https://unpkg.com/patch-mark"></script>`.
+:::
+
 ## Vue
 
 ```vue

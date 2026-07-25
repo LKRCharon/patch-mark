@@ -16,12 +16,16 @@ Every annotation can be copied as structured Markdown, ready to paste into any A
 - **Element:** `<button>`
 - **Selector:** `div.header > button.submit-btn`
 - **Name:** `#submit-btn`
+- **Component:** `<SubmitButton>`
+- **Source:** src/components/SubmitButton.tsx:42
 - **Text:** "Submit Application"
 - **Position:** top=320, left=480, 128x40
 - **Page:** /dashboard
 - **Feedback:** 按钮文字在移动端太小，建议增大到 16px
 - **Status:** open
 ```
+
+The **Component** and **Source** lines appear when the page runs a React or Vue **dev build**: patch-mark reads the framework's component tree and the JSX source mapping, so the agent jumps straight to the file instead of grepping for the selector. Production/minified builds expose no such metadata — output there is exactly as before.
 
 The compose panel and list panel each have a "Copy as prompt" button. You can also call it programmatically:
 

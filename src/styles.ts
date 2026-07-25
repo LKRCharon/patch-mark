@@ -11,6 +11,13 @@ function buildGlobalStyles(prefix: string): string {
 .${pickerActive} * {
   cursor: crosshair !important;
 }
+
+/* Freeze CSS animations while picking so animated elements hold still as
+   selection targets. Transitions are left alone: pausing them mid-flight
+   would snap elements to their end state and change the page's look. */
+.${pickerActive} * {
+  animation-play-state: paused !important;
+}
 `;
 }
 

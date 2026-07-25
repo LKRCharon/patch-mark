@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-07-23
+
+### Added
+
+- **Framework component detection (React/Vue dev builds).** Annotations now
+  carry `Component` and `Source` lines — e.g. `<SubmitButton>` and
+  `src/Button.tsx:42` — read from the React fiber tree / Vue component
+  instance and the JSX dev source mapping. The agent jumps straight to the
+  file instead of grepping for the selector. Production/minified builds
+  expose no such metadata; output there is unchanged.
+- **Keyboard shortcuts.** `Esc` unwinds one layer at a time
+  (compose → picking → closed; also closes the list panel);
+  `Cmd/Ctrl+Enter` submits the annotation being composed. Both are inert
+  while the tool is closed, so page-level shortcuts are never hijacked.
+- **Animation freeze while picking.** CSS animations pause and looping
+  background videos halt on entering picking mode, so animated targets
+  hold still long enough to be selected. Everything resumes on exit;
+  transitions are left untouched so elements don't snap to their end
+  state mid-pick.
+
 ## [0.7.2] - 2026-07-24
 
 ### Fixed
