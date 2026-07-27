@@ -609,6 +609,16 @@ code {
 .diff-arrow { color: var(--muted); }
 .diff-to { color: var(--accent-text); font-weight: 700; }
 
+/* the MCP cell stays dark in both color schemes: a visual anchor in the
+   bento, matching the code blocks */
+.f-mcp { background: var(--code-bg); border-color: rgba(124, 179, 255, 0.12); }
+.f-mcp:hover { border-color: rgba(124, 179, 255, 0.35); box-shadow: 0 10px 30px var(--shadow); }
+.f-mcp h3 { color: #e9eff8; }
+.f-mcp p { color: #9badc4; }
+.f-mcp .feature-icon { background: rgba(124, 179, 255, 0.14); color: #7cb3ff; }
+.f-mcp code { border-color: rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.07); color: #7cb3ff; }
+.f-mcp .mini-code { background: rgba(0, 0, 0, 0.3); }
+
 /* ---------- Install ---------- */
 .install { padding: 5rem 0; border-top: 1px solid var(--line); }
 .install-copy { max-width: 40rem; }
@@ -679,7 +689,7 @@ code {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
       </span>
       patch-mark
-      <span class="nav-version">v0.2.0</span>
+      <span class="nav-version"></span>
     </a>
     <div class="nav-links">
       <a href="https://lkrcharon.github.io/patch-mark/docs/">Docs</a>
@@ -705,7 +715,8 @@ code {
     <h1>Stop describing UI bugs.<br />Start <span class="marked">pointing<span class="marked-tip" aria-hidden="true">em</span></span> at them.</h1>
     <p class="hero-sub">
       A tiny Web Component that turns pointing at UI into machine-readable prompts:
-      selector, position, visible text, exact CSS property changes.
+      selector, position, visible text, exact CSS property changes — and on dev builds,
+      the component's own source file.
     </p>
     <div class="hero-ctas">
       <a class="btn btn-primary" href="#demo">Try the live demo</a>
@@ -736,7 +747,7 @@ code {
       <div class="step">
         <span class="pin">3</span>
         <h3>Hand off</h3>
-        <p>Hit <code>Copy as prompt</code> and paste into Cursor, Claude Code, or any agent. Or stream annotations to your backend with the store adapter and let the agent pick them up itself.</p>
+        <p>One click copies a batch handoff prompt for any agent. Or register the MCP server and the agent pulls open items and marks them resolved itself — zero copy-pasting.</p>
       </div>
     </div>
   </div>
@@ -893,6 +904,8 @@ code {
 - <span class="tok-k">**Element:**</span> `<span class="tok-s">button</span>`
 - <span class="tok-k">**Selector:**</span> `<span class="tok-s">div.app-title-actions &gt; button.btn-export</span>`
 - <span class="tok-k">**Name:**</span> button.btn-export
+- <span class="tok-k">**Component:**</span> `<span class="tok-s">ExportButton</span>`
+- <span class="tok-k">**Source:**</span> src/dashboard/ExportButton.tsx:38
 - <span class="tok-k">**Text:**</span> "Export"
 - <span class="tok-k">**Position:**</span> top=612, left=944, 86x36
 - <span class="tok-k">**Page:**</span> /
@@ -916,13 +929,28 @@ code {
         <span class="feature-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
         </span>
-        <h3>Copy as prompt</h3>
-        <p>One click exports structured Markdown: selector, position, text, and your feedback. Paste it into any coding agent.</p>
-        <div class="mini-code">- **Selector:** div.app-title-actions &gt; button.btn-export
-- **Feedback:** This button is green while every other
-  action uses the brand blue. Make it consistent.</div>
+        <h3>Batch handoff</h3>
+        <p>Annotate ten things, hand them off in one prompt. The list panel’s handoff bar copies working instructions plus every open item — resolved ones excluded.</p>
+        <div class="mini-code">You are fixing a batch of UI feedback captured with patch-mark.
+- **Open Items:** 7
+
+1. Locate each element by Selector, Text, or Quote.
+2. Apply the Feedback. Property Changes are exact.
+3. Don’t pause for confirmation — edit and move on.</div>
       </div>
-      <div class="feature f-inspector">
+      <div class="feature f-inspector f-mcp">
+        <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        </span>
+        <h3>MCP server</h3>
+        <p>Agents that speak MCP pull open annotations and mark them resolved themselves. The feedback loop closes with zero copy-pasting.</p>
+        <div class="mini-code">"patch-mark": {
+  "command": "npx",
+  "args": ["-y", "patch-mark-mcp",
+           "--endpoint", "/api/annotations"]
+}</div>
+      </div>
+      <div class="feature f-sm">
         <span class="feature-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
         </span>
@@ -935,31 +963,24 @@ code {
       </div>
       <div class="feature f-sm">
         <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </span>
+        <h3>Component &amp; source</h3>
+        <p>On React / Vue dev builds the prompt carries the component name and its <code>src/File.tsx:42</code> — the agent jumps straight to the file.</p>
+      </div>
+      <div class="feature f-sm">
+        <span class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><line x1="8" y1="3" x2="16" y2="3"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+        </span>
+        <h3>Text selection</h3>
+        <p>Drag across any phrase to annotate it verbatim. The <code>Quote</code> line gives the agent an exact string to grep.</p>
+      </div>
+      <div class="feature f-sm">
+        <span class="feature-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>
         </span>
         <h3>Zero dependencies</h3>
-        <p>A single ESM file, ~11 KB gzipped. No runtime, no framework lock-in. Drop it into any page with one <code>script</code> tag.</p>
-      </div>
-      <div class="feature f-sm">
-        <span class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        </span>
-        <h3>Shadow DOM isolation</h3>
-        <p>Component styles never leak into your app, and your app’s CSS never breaks the tool. Safe to mount on any page.</p>
-      </div>
-      <div class="feature f-sm">
-        <span class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-        </span>
-        <h3>Store adapter API</h3>
-        <p><code>localStorage</code> out of the box. Implement four methods to stream annotations anywhere: REST, WebSocket, files.</p>
-      </div>
-      <div class="feature f-sm">
-        <span class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        </span>
-        <h3>Resolve lifecycle</h3>
-        <p>Annotations carry <code>open / resolved</code> status. The agent marks items done after fixing them, and you watch the loop close in the list panel.</p>
+        <p>A single ESM file, ~19 KB gzipped. No runtime, no framework lock-in — Shadow DOM keeps its styles out of your app.</p>
       </div>
     </div>
   </div>
@@ -990,6 +1011,7 @@ code {
   <div class="wrap footer-inner">
     <span>MIT License · patch-mark</span>
     <div class="footer-links">
+      <a href="https://lkrcharon.github.io/patch-mark/docs/">Docs</a>
       <a href="https://github.com/LKRCharon/patch-mark" target="_blank" rel="noopener">GitHub</a>
       <a href="https://www.npmjs.com/package/patch-mark" target="_blank" rel="noopener">npm</a>
       <a href="#top">Back to top</a>
