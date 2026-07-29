@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.3] - 2026-07-29
+
+### Fixed
+
+- **Launcher no longer collapses on a tiny drag from the default dock.**
+  The snap-to-edge threshold was 60px, but the default right-center dock
+  already puts the launcher centre ~24px from the edge — so any small
+  drag snapped it into the collapsed peek-tab and the user had to click
+  (not drag) to get it back. The threshold is now 12px (under half the
+  launcher width), so the launcher only collapses when pushed almost
+  fully to an edge. Regression introduced in 0.7.0 (free-drag launch).
+
 ## [0.9.2] - 2026-07-23
 
 ### Fixed
@@ -320,6 +332,7 @@ optional fields. Annotations written by older versions (e.g. without
 `status`) are treated as `open` everywhere, so upgrading never requires a
 data migration.
 
+[0.9.3]: https://github.com/LKRCharon/patch-mark/compare/v0.9.2...v0.9.3
 [0.6.0]: https://github.com/LKRCharon/patch-mark/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/LKRCharon/patch-mark/compare/v0.3.0...v0.5.0
 [0.3.0]: https://github.com/LKRCharon/patch-mark/compare/v0.2.1...v0.3.0

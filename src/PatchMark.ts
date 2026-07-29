@@ -1,5 +1,5 @@
 import type { Annotation, AnnotationLabels, AnnotationStore, AnnotationTheme, ElementTarget, HoverInfo, PatchMarkErrorContext, PickerTarget, PropertyChange, ThemeName, ToolMode } from './types.js';
-import { describeElement, toElementTarget, formatTime } from './utils.js';
+import { describeElement, toElementTarget, formatTime, shouldSnapToEdge } from './utils.js';
 import { createLocalStorageStore } from './stores/localStorage.js';
 import { defaultLabels } from './labels.js';
 import { formatAnnotationAsPrompt, formatAnnotationsAsPrompt, formatHandoffPrompt } from './prompt.js';
@@ -1161,8 +1161,7 @@ export class PatchMark extends BaseHTMLElement {
     if (!this.launcherEl || !this.launcherPos) return false;
     const rect = this.launcherEl.getBoundingClientRect();
     const cx = this.launcherPos.x + rect.width / 2;
-    const margin = 60;
-    return cx < margin || cx > window.innerWidth - margin;
+    return shouldSnapToEdge(cx, window.innerWidth);
   }
 
   private collapseLauncher(): void {

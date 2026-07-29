@@ -81,3 +81,14 @@ export function formatTime(value: string, locale = 'zh-CN'): string {
     minute: '2-digit',
   }).format(date);
 }
+
+/**
+ * Whether the launcher centre is close enough to a viewport edge to snap
+ * into the collapsed peek-tab. The margin must stay under half the
+ * launcher width: the default right-center dock already puts the centre
+ * ~24px from the edge, so a larger threshold collapses it on any tiny
+ * drag.
+ */
+export function shouldSnapToEdge(centerX: number, viewportWidth: number, margin = 12): boolean {
+  return centerX < margin || centerX > viewportWidth - margin;
+}
