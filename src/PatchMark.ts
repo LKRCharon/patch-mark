@@ -805,8 +805,22 @@ export class PatchMark extends BaseHTMLElement {
     );
   }
 
+  private hasSameChanges(changes: PropertyChange[]): boolean {
+    const current = this.getChanges();
+    return current.length === changes.length && current.every((change) =>
+      changes.some((submitted) =>
+        submitted.property === change.property &&
+        submitted.from === change.from &&
+        submitted.to === change.to,
+      ),
+    );
+  }
+
   private async submitAnnotation(): Promise<void> {
-    if (!this.selectedTarget || !this.message.trim() || this.isSubmitting) return;
+    const submittedTarget = this.selectedTarget;
+    const submittedMessage = this.message.trim();
+    const submittedChanges = this.getChanges();
+    if (!submittedTarget || !submittedMessage || this.isSubmitting) return;
 
     this.isSubmitting = true;
     this.status = null;
@@ -817,17 +831,24 @@ export class PatchMark extends BaseHTMLElement {
       const annotation = await this.store.create({
         pagePath: window.location.pathname,
         pageTitle: document.title,
-        message: this.message.trim(),
-        element: this.selectedTarget,
-        changes: this.getChanges(),
+        message: submittedMessage,
+        element: submittedTarget,
+        changes: submittedChanges,
       });
       this.annotations = [annotation, ...this.annotations];
-      this.message = '';
-      this.selectedTarget = null;
-      this.selectedElement = null;
-      this.mode = 'list';
-      this.cleanupComposeTracking();
-      this.updateOverlay();
+      // Keep the capture loop moving: after a successful save, return to
+      // picking so the next element can be annotated immediately. The list
+      // remains available as an explicit tab instead of interrupting a batch.
+      // If the user already changed context while a slow store was saving,
+      // leave that newer mode/draft alone when the old request completes.
+      if (
+        this.mode === 'compose' &&
+        this.selectedTarget === submittedTarget &&
+        this.message.trim() === submittedMessage &&
+        this.hasSameChanges(submittedChanges)
+      ) {
+        this.startPicking();
+      }
     } catch (error) {
       if (!this.handleStoreError(error, { operation: 'create' })) {
         this.status = error instanceof Error ? error.message : 'Failed to submit.';

@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4] - 2026-08-03
+
+### Fixed
+
+- **Submitting an annotation now returns directly to element picking.**
+  The saved-annotation list remains available from its tab, but no longer
+  interrupts users who are capturing several annotations in a row.
+
 ## [0.9.3] - 2026-07-29
 
 ### Fixed
@@ -332,6 +340,7 @@ optional fields. Annotations written by older versions (e.g. without
 `status`) are treated as `open` everywhere, so upgrading never requires a
 data migration.
 
+[0.9.4]: https://github.com/LKRCharon/patch-mark/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/LKRCharon/patch-mark/compare/v0.9.2...v0.9.3
 [0.6.0]: https://github.com/LKRCharon/patch-mark/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/LKRCharon/patch-mark/compare/v0.3.0...v0.5.0
