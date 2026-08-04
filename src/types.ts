@@ -52,15 +52,36 @@ export type CreateAnnotationInput = {
   changes?: PropertyChange[];
 };
 
+/**
+ * Built-in lifecycle mutations are intentionally narrow. A caller that needs
+ * arbitrary record editing should expose a domain-specific command instead of
+ * accepting an unbounded Partial<Annotation> from the browser or an agent.
+ */
+export type ResolveAnnotationPatch = { status: 'resolved' };
+
+/** Optional cancellation propagated through asynchronous store operations. */
+export type StoreRequestOptions = {
+  signal?: AbortSignal;
+  /** Scope a mutation that operates on an ordered page-local collection. */
+  pagePath?: string;
+};
+
 export interface AnnotationStore {
-  list(pagePath: string): Promise<Annotation[]>;
-  create(input: CreateAnnotationInput): Promise<Annotation>;
-  update?(id: string, patch: Partial<Annotation>): Promise<Annotation>;
-  delete?(id: string): Promise<void>;
-  reorder?(ids: string[]): Promise<void>;
+  list(pagePath: string, options?: StoreRequestOptions): Promise<Annotation[]>;
+  create(input: CreateAnnotationInput, options?: StoreRequestOptions): Promise<Annotation>;
+  update?(id: string, patch: ResolveAnnotationPatch, options?: StoreRequestOptions): Promise<Annotation>;
+  delete?(id: string, options?: StoreRequestOptions): Promise<void>;
+  reorder?(ids: string[], options?: StoreRequestOptions): Promise<void>;
+  /**
+   * Required when the component's require-auth mode is enabled. It must make
+   * a server-authorized request and reject with PatchMarkAuthError on a 401.
+   */
+  validateAccess?(options?: StoreRequestOptions): Promise<void>;
   /** If set, the handoff prompt instructs the agent to read/resolve
    *  annotations through this source itself (self-serve loop). */
   readonly source?: { readonly type: 'rest'; readonly endpoint: string };
+  /** Whether the store can currently survive a page reload. */
+  readonly persistence?: 'durable' | 'memory';
 }
 
 /** Context passed to the onError callback when a store operation fails. */

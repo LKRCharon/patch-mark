@@ -1,6 +1,7 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { PatchMark } from '../src/PatchMark.js';
+import { defaultLabels } from '../src/labels.js';
 import type { Annotation, ElementTarget, PropertyChange, ToolMode } from '../src/types.js';
 
 type PatchMarkInternals = {
@@ -196,4 +197,31 @@ test('a slow submit does not discard newer property changes', async (t) => {
     'font-size': { from: '12px', to: '16px' },
   });
   assert.deepEqual(state.annotations, [created]);
+});
+
+test('page identity keeps query/hash and reactive labels reset missing fields to defaults', (t) => {
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      location: { pathname: '/preview', search: '?ticket=42', hash: '#copy' },
+    },
+  });
+  t.after(() => {
+    if (windowDescriptor) Object.defineProperty(globalThis, 'window', windowDescriptor);
+    else Reflect.deleteProperty(globalThis, 'window');
+  });
+
+  const tool = new PatchMark();
+  const state = tool as unknown as { currentPagePath(): string };
+  assert.equal(state.currentPagePath(), '/preview?ticket=42#copy');
+
+  tool.pageKey = ' /reviews/42 ';
+  assert.equal(state.currentPagePath(), '/reviews/42');
+  tool.pageKey = null;
+  assert.equal(state.currentPagePath(), '/preview?ticket=42#copy');
+
+  tool.labels = { picker: 'Choose target' };
+  assert.equal(tool.labels.picker, 'Choose target');
+  assert.equal(tool.labels.list, defaultLabels.list);
 });

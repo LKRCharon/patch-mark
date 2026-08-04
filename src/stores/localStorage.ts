@@ -1,7 +1,15 @@
-import type { Annotation, AnnotationStore, CreateAnnotationInput } from '../types.js';
+import type { Annotation, AnnotationStore, CreateAnnotationInput, ResolveAnnotationPatch } from '../types.js';
 import { STORAGE_KEY_DEFAULT } from '../identity.js';
+import { parseAnnotation, parseAnnotations, parseResolvePatch } from '../schema.js';
 
 const MAX_ANNOTATIONS = 1000;
+
+export class PatchMarkPersistenceError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'PatchMarkPersistenceError';
+  }
+}
 
 function generateId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -19,9 +27,14 @@ function isLocalStorageAvailable(): boolean {
   }
 }
 
+/**
+ * Browser-only store with an explicit durability state. If localStorage is
+ * unavailable at startup it intentionally uses memory for the session. If a
+ * durable write later fails, the operation throws instead of claiming success.
+ */
 export function createLocalStorageStore(options?: { key?: string }): AnnotationStore {
   const storageKey = options?.key ?? STORAGE_KEY_DEFAULT;
-  const available = isLocalStorageAvailable();
+  let persistence: 'durable' | 'memory' = isLocalStorageAvailable() ? 'durable' : 'memory';
   const memoryFallback: Annotation[] = [];
 
   function readFromMemory(): Annotation[] {
@@ -32,38 +45,64 @@ export function createLocalStorageStore(options?: { key?: string }): AnnotationS
     try {
       const raw = localStorage.getItem(storageKey);
       if (!raw) return [];
-      const value: unknown = JSON.parse(raw);
-      if (!Array.isArray(value)) return [];
-      return value.filter(isAnnotation);
-    } catch {
-      return [];
+      const parsed: unknown = JSON.parse(raw);
+      // Invalid records must never reach a renderer. Preserve valid legacy
+      // records rather than making one malformed entry hide every annotation.
+      if (!Array.isArray(parsed)) {
+        throw new PatchMarkPersistenceError('Saved patch-mark annotations are malformed.');
+      }
+      const safe: Annotation[] = [];
+      for (const value of parsed) {
+        try {
+          safe.push(parseAnnotation(value));
+        } catch {
+          // An old or manually-edited record is ignored, rather than trusted.
+        }
+      }
+      return safe;
+    } catch (error) {
+      if (error instanceof PatchMarkPersistenceError) throw error;
+      throw new PatchMarkPersistenceError('Could not read saved patch-mark annotations.', { cause: error });
     }
   }
 
-  function writeFromStorage(annotations: Annotation[]): void {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(annotations.slice(0, MAX_ANNOTATIONS)));
-    } catch {
-      // Quota exceeded or other write error — silently degrade
-    }
+  function writeToMemory(annotations: Annotation[]): void {
+    memoryFallback.length = 0;
+    memoryFallback.push(...annotations.slice(0, MAX_ANNOTATIONS));
   }
 
   function read(): Annotation[] {
-    return available ? readFromStorage() : readFromMemory();
+    return persistence === 'durable' ? readFromStorage() : readFromMemory();
   }
 
   function write(annotations: Annotation[]): void {
-    if (available) {
-      writeFromStorage(annotations);
-    } else {
-      memoryFallback.length = 0;
-      memoryFallback.push(...annotations.slice(0, MAX_ANNOTATIONS));
+    const safe = parseAnnotations(annotations).slice(0, MAX_ANNOTATIONS);
+    if (persistence === 'memory') {
+      writeToMemory(safe);
+      return;
+    }
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(safe));
+    } catch (error) {
+      // Preserve the user’s work for this tab, but surface that it is no longer
+      // durable. The caller must not show a normal “saved” success state.
+      persistence = 'memory';
+      writeToMemory(safe);
+      throw new PatchMarkPersistenceError(
+        'Could not persist the annotation. It is available only for this browser session.',
+        { cause: error },
+      );
     }
   }
 
   return {
+    get persistence() {
+      return persistence;
+    },
+
     async list(pagePath: string): Promise<Annotation[]> {
-      return read().filter((a) => a.pagePath === pagePath);
+      return read().filter((annotation) => annotation.pagePath === pagePath);
     },
 
     async create(input: CreateAnnotationInput): Promise<Annotation> {
@@ -83,44 +122,31 @@ export function createLocalStorageStore(options?: { key?: string }): AnnotationS
       return annotation;
     },
 
-    async update(id: string, patch: Partial<Annotation>): Promise<Annotation> {
+    async update(id: string, patch: ResolveAnnotationPatch): Promise<Annotation> {
       const annotations = read();
-      const index = annotations.findIndex((a) => a.id === id);
+      const index = annotations.findIndex((annotation) => annotation.id === id);
       if (index === -1) throw new Error(`Annotation ${id} not found`);
-      annotations[index] = { ...annotations[index], ...patch };
+      const next = { ...annotations[index], ...parseResolvePatch(patch) };
+      annotations[index] = parseAnnotation(next);
       write(annotations);
       return annotations[index];
     },
 
     async delete(id: string): Promise<void> {
-      const annotations = read().filter((a) => a.id !== id);
-      write(annotations);
+      write(read().filter((annotation) => annotation.id !== id));
     },
 
     async reorder(ids: string[]): Promise<void> {
       const annotations = read();
       const idSet = new Set(ids);
       const reordered = ids
-        .map((id) => annotations.find((a) => a.id === id))
-        .filter((a): a is Annotation => a !== undefined);
-      let idx = 0;
-      const result = annotations.map((a) =>
-        idSet.has(a.id) ? reordered[idx++] ?? a : a,
+        .map((id) => annotations.find((annotation) => annotation.id === id))
+        .filter((annotation): annotation is Annotation => annotation !== undefined);
+      let index = 0;
+      const result = annotations.map((annotation) =>
+        idSet.has(annotation.id) ? reordered[index++] ?? annotation : annotation,
       );
       write(result);
     },
   };
-}
-
-function isAnnotation(value: unknown): value is Annotation {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.id === 'string' &&
-    typeof v.pagePath === 'string' &&
-    typeof v.message === 'string' &&
-    typeof v.createdAt === 'string' &&
-    typeof v.element === 'object' &&
-    v.element !== null
-  );
 }

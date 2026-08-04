@@ -17,10 +17,10 @@ npm/tags.
 
 | # | Step | Command / action | Verify |
 |---|------|------------------|--------|
-| 1 | Code done | `npm run typecheck && npm run build` | green |
+| 1 | Code done | `npm run typecheck && npm test && npm run build && npm run docs:build` | green |
 | 2 | Bump version | `package.json` `version` | matches CHANGELOG |
 | 3 | Update CHANGELOG | new `## [x.y.z] - YYYY-MM-DD` section | Added / Changed / Fixed |
-| 4 | Pack check | `npm pack --dry-run` | files + size sane |
+| 4 | Artifact + pack check | Stage the release files, then run `npm run build && git diff --exit-code -- dist/patch-mark.js && npm pack --dry-run` | rebuild leaves the staged bundle unchanged; files + size sane |
 | 5 | Commit | `release: x.y.z` | |
 | 6 | Push main | `git push` | remote main advances |
 | 7 | — | trusted publishing is one-time, skip | |

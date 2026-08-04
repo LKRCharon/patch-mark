@@ -1,36 +1,43 @@
-# Access control (optional)
+# Access control
 
-When the tool is `visible` on a shared staging URL, anyone who finds the page can write annotations to your backend — or read the feedback others left. If that matters, turn on token-based access control; small sites can skip this section entirely.
+`require-auth` improves the component’s session state; it is **not** backend authorization. A visitor can always inspect and alter browser code. Protect the API itself before enabling the UI lock.
 
 ```html
 <patch-mark visible require-auth></patch-mark>
 ```
 
-With `require-auth` set, the launcher opens a lock panel instead of the picker until a valid access token is present. Tokens reach people through sharing links:
+## What the component enforces
 
-```
-https://staging.example.com/dashboard?pm_token=<token>
-```
+- A token from `?pm_token=` is captured, stored with an in-memory fallback, then removed from the URL.
+- A protected session is not considered valid merely because a token exists. On opening, PatchMark calls `store.validateAccess({ pagePath })` before exposing picker/list controls.
+- A `401` clears the stored token, cancels stale work, clears in-memory annotations, and returns to the lock screen. An older 401 cannot re-lock a newer token session.
+- `require-auth` refuses a store without `validateAccess()`. The default localStorage store is intentionally not an auth store.
 
-The component captures the parameter on load, persists it (localStorage with an in-memory fallback), and scrubs it from the address bar so it can't leak through screenshots or forwarded URLs. Every fetch-store request then carries `authorization: Bearer <token>`. Visitors who only got the token string can paste it into the lock panel instead.
+## Backend requirements
 
-## Backend contract
+Every endpoint must independently require and verify the Bearer token:
 
-With auth enabled, **every** endpoint (including `GET`) answers `401` to a missing or invalid token. The component recognizes the 401 and shows the lock panel automatically — even mid-session, e.g. after a token was revoked.
+- `GET`, `POST`, `PATCH`, `DELETE`, and reorder all return `401` for a missing, expired, or revoked token.
+- Validate token scope server-side. A token that can list annotations should not automatically mint tokens or access unrelated APIs.
+- Keep the token out of logs, analytics, error reports, screenshots, and referrers. Use short-lived/scoped credentials where practical.
+- Enforce TLS, rate limiting, CORS/origin policy, and normal application authorization. PatchMark cannot provide these from a web component.
 
-The [`examples/nextjs-app-router/`](https://github.com/LKRCharon/patch-mark/tree/main/examples/nextjs-app-router) backend implements the whole flow:
+The Next.js example demonstrates a small staging-oriented token guard. Its file-backed token store is not a production identity system; use your existing auth provider and a database for shared environments.
 
-- an `ANNOTATION_AUTH=1` env switch
-- an initial token minted and logged on the first authenticated request
-- an admin-guarded `POST /api/annotations/tokens` endpoint to mint more tokens
-- revocation by removing the token from `.data/tokens.json`
-
-See its README for setup.
-
-## Programmatic control
+## Custom protected stores
 
 ```ts
-import { setAuthToken, getAuthToken, clearAuthToken } from 'patch-mark';
+import { PatchMarkAuthError } from 'patch-mark';
+
+tool.store = {
+  async list(pageKey, { signal } = {}) { /* authenticated GET */ },
+  async create(input, { signal } = {}) { /* authenticated POST */ },
+  async validateAccess({ pagePath } = {}) {
+    const response = await fetch(`/api/annotations?page=${encodeURIComponent(pagePath ?? '')}`);
+    if (response.status === 401) throw new PatchMarkAuthError('Unauthorized');
+    if (!response.ok) throw new Error('Could not validate access');
+  },
+};
 ```
 
-The localStorage store needs no auth — data never leaves the browser.
+Use `setAuthToken`, `getAuthToken`, and `clearAuthToken` only to manage the browser-side credential handoff. They do not establish trust without the server round-trip above.

@@ -1,113 +1,60 @@
 # Store 适配器与 REST 契约
 
-Store 适配器不是"扩展特性"——它是产品的核心。批注通过它到达 agent 能读取的位置。
+Store 是安全边界：它返回的数据会被渲染到页面，也可能交给 agent。PatchMark 会校验内置 store，并在渲染前再次校验 store 返回值；但后端仍必须对每个请求做鉴权和运行时校验。
 
 ## 接口
 
-```typescript
+```ts
 interface AnnotationStore {
-  list(pagePath: string): Promise<Annotation[]>;
-  create(input: CreateAnnotationInput): Promise<Annotation>;
-  update?(id: string, patch: Partial<Annotation>): Promise<Annotation>;
-  delete?(id: string): Promise<void>;
-  reorder?(ids: string[]): Promise<void>;
+  list(pageKey: string, options?: StoreRequestOptions): Promise<Annotation[]>;
+  create(input: CreateAnnotationInput, options?: StoreRequestOptions): Promise<Annotation>;
+  update?(id: string, patch: { status: 'resolved' }, options?: StoreRequestOptions): Promise<Annotation>;
+  delete?(id: string, options?: StoreRequestOptions): Promise<void>;
+  reorder?(ids: string[], options?: StoreRequestOptions): Promise<void>;
+  validateAccess?(options?: StoreRequestOptions): Promise<void>;
 }
 ```
+
+`StoreRequestOptions` 带有 `AbortSignal`；重排和访问验证还会收到当前 `pagePath`。默认页面 key 是 `pathname + search + hash`。前进/后退和 hash 路由会自动刷新已打开的列表；使用 pushState 路由时，请在路由或内容标识变化时设置 `tool.pageKey`。
+
+`update` 故意收窄为 resolve。不要让浏览器或 agent 传 `Partial<Annotation>`；更复杂的工作流应使用单独的后端命令和授权规则。
+
+列表重排也是可选能力。只有 store 实现 `reorder()` 时 PatchMark 才显示拖动手柄；请求进行中手柄会禁用，失败则恢复原有顺序。
 
 ## 内置 store
 
-**`createLocalStorageStore({ key? })`** — 默认。以 JSON 存到 `localStorage`。隐私模式下回退为内存数组（不报错、会话内不丢数据）。
+- `createLocalStorageStore({ key? })` 是默认值。可用时写入 localStorage；后续写入失败时会把当前会话保留在内存里，**同时拒绝这次操作**，绝不假装持久化成功。可读 `store.persistence`（`'durable' | 'memory'`）。
+- `createFetchStore({ endpoint, headers?, timeoutMs? })` 接受相对或绝对的 HTTP(S) 地址，且不允许在 URL 中携带凭据；它使用安全 URL 构造、默认 15 秒超时、取消信号和严格的请求/响应校验。
 
-**`createFetchStore({ endpoint, headers? })`** — REST API store。对接任何实现了下列端点契约的后端。
+## REST 契约
 
-## REST 端点契约
+| Method | Path | 请求 | 响应 |
+| --- | --- | --- | --- |
+| `GET` | `{endpoint}?page=<page-key>` | — | `{ annotations: Annotation[] }` |
+| `POST` | `{endpoint}` | 严格的 `CreateAnnotationInput` | `{ annotation: Annotation }` (201) |
+| `PATCH` | `{endpoint}/{id}` | 仅 `{ "status": "resolved" }` | `{ annotation: Annotation }` |
+| `DELETE` | `{endpoint}/{id}` | — | `204` |
+| `POST` | `{endpoint}/reorder` | `{ page: string, ids: string[] }` | `204` |
 
-用 `createFetchStore` 时，服务器实现这些路由：
+服务端规则：
 
-| Method | Path | Query | Request body | Response |
-|--------|------|-------|-------------|----------|
-| `GET` | `{endpoint}` | `?page=/dashboard` | — | `{ annotations: Annotation[] }` |
-| `POST` | `{endpoint}` | — | `CreateAnnotationInput` | `{ annotation: Annotation }` (201) |
-| `PATCH` | `{endpoint}/{id}` | — | `Partial<Annotation>` | `{ annotation: Annotation }` |
-| `DELETE` | `{endpoint}/{id}` | — | — | 204 |
-| `POST` | `{endpoint}/reorder` | — | `{ ids: string[] }` | 204 |
+- 运行时拒绝未知字段，并校验长度、有限几何值、状态和重复 ID。
+- `id`、`createdAt`、初始 `status: 'open'` 必须由服务端生成；不要把网络 payload 直接 spread 到持久化对象。
+- 重排只作用于一个精确 page key；提交的 ID 集合必须与该页完全一致。
+- 受保护的每个路由（包括 `GET`）都要返回 `401`；文件损坏/IO 失败要返回 `503`，不能伪装成空列表。
+- 生产环境使用事务数据库或分布式锁。随包的 JSON 文件后端只适合单进程本地/开发，不适合多实例或 serverless。
 
-> **服务端职责：** 客户端只发 `CreateAnnotationInput`——由服务器分配 `id`、`createdAt`，并初始化 `status: 'open'`。没有 `status`，解决生命周期就没有意义。不完整的实现（比如缺 `PATCH`）会在浏览器控制台大声报错（`[patch-mark] ...` 警告）；把组件的 `onError` 回调接到你的监控里。开启[访问控制](/zh/guide/access-control)后，所有路由（含 `GET`）对缺失或无效的 Bearer token 返回 `401`，组件据此自动显示锁定面板。
-
-## 服务端示例
-
-Next.js Route Handler，基于文件的 JSON store：
-
-```ts
-// app/api/annotations/route.ts
-import { randomUUID } from 'crypto';
-import { readFile, writeFile, mkdir, rename } from 'fs/promises';
-import path from 'path';
-import { NextRequest, NextResponse } from 'next/server';
-import type { Annotation } from 'patch-mark';
-
-const storePath = path.join(process.cwd(), '.data', 'annotations.json');
-
-export async function GET(request: NextRequest) {
-  const page = request.nextUrl.searchParams.get('page');
-  const annotations = await readAnnotations();
-  return NextResponse.json({
-    annotations: page ? annotations.filter(a => a.pagePath === page) : annotations,
-  });
-}
-
-export async function POST(request: NextRequest) {
-  const input = await request.json();
-  const annotation = { id: randomUUID(), ...input, createdAt: new Date().toISOString(), status: 'open' };
-  const annotations = await readAnnotations();
-  annotations.unshift(annotation);
-  await saveAnnotations(annotations.slice(0, 1000));
-  return NextResponse.json({ annotation }, { status: 201 });
-}
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const id = params.id;
-  const patch = await request.json();
-  const annotations = await readAnnotations();
-  const idx = annotations.findIndex(a => a.id === id);
-  if (idx === -1) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  annotations[idx] = { ...annotations[idx], ...patch };
-  await saveAnnotations(annotations);
-  return NextResponse.json({ annotation: annotations[idx] });
-}
-
-async function readAnnotations(): Promise<Annotation[]> {
-  try {
-    return JSON.parse(await readFile(storePath, 'utf8'));
-  } catch {
-    return []; // 还没有文件
-  }
-}
-
-async function saveAnnotations(annotations: Annotation[]): Promise<void> {
-  await mkdir(path.dirname(storePath), { recursive: true });
-  const tmp = `${storePath}.tmp`; // 原子写：tmp + rename
-  await writeFile(tmp, JSON.stringify(annotations, null, 2));
-  await rename(tmp, storePath);
-}
-```
-
-你的 agent 读 JSON 文件（或调 `GET /api/annotations`），处理每条 `status: 'open'` 的批注。修完代码后调 `PATCH /api/annotations/{id}` 传 `{ status: 'resolved' }` 闭环。
-
-上面示例展示了 `GET`/`POST`/`PATCH`。全五个路由（加客户端组件、加访问控制）的即拷即用实现见 [`examples/nextjs-app-router/`](https://github.com/LKRCharon/patch-mark/tree/main/examples/nextjs-app-router)——它随 npm 包发布。
+[`examples/nextjs-app-router/`](https://github.com/LKRCharon/patch-mark/tree/main/examples/nextjs-app-router) 实现了这套收窄契约。它适合作为参考；部署到共享环境前请替换文件 store。
 
 ## 自定义 store
 
-实现 `AnnotationStore` 接口并赋值：
-
 ```ts
 tool.store = {
-  async list(pagePath) { /* 你的逻辑 */ },
-  async create(input) { /* 你的逻辑 */ },
-  async update(id, patch) { /* 可选 */ },
-  async delete(id) { /* 可选 */ },
+  async list(pageKey, { signal } = {}) { /* 只查询这个页面 */ },
+  async create(input, { signal } = {}) { /* 校验并持久化 */ },
+  async update(id, patch) { /* 只接受 patch.status === 'resolved' */ },
+  async validateAccess() { /* 受保护的服务端往返；401 时 reject */ },
 };
 ```
+
+启用 `require-auth` 时必须实现 `validateAccess()`。它必须实际请求受鉴权保护的服务端，并在 `401` 时抛出 `PatchMarkAuthError`；浏览器里“恰好有一个 token”不代表会话有效。

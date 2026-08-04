@@ -13,7 +13,7 @@
 > Try the **[live demo](https://lkrcharon.github.io/patch-mark/)** — the whole landing page is interactive.
 > Full docs (EN / 中文): **[lkrcharon.github.io/patch-mark/docs/](https://lkrcharon.github.io/patch-mark/docs/)**
 
-UI feedback for AI coding agents. Point at an element on a preview page, write a comment, and your coding agent gets the structured context it needs to fix the code — CSS selector, element name, position, visible text, and the feedback message. No more "the button on the left" screenshots.
+UI feedback for AI coding agents. Point at an element on a preview page, write a comment, and your coding agent gets structured **untrusted evidence** to verify — selector, element name, position, visible text, and feedback. No more "the button on the left" screenshots.
 
 This is not an annotation library for human review — it's specifically the **feedback channel between a human and an AI coding agent**.
 
@@ -43,11 +43,13 @@ tool.store = createFetchStore({ endpoint: '/api/annotations' });
 
 ```tsx
 'use client';
+import { useMemo } from 'react';
 import { PatchMark } from 'patch-mark/react';
 import { createFetchStore } from 'patch-mark';
 
 export default function PatchMarkClient() {
-  return <PatchMark store={createFetchStore({ endpoint: '/api/annotations' })} />;
+  const store = useMemo(() => createFetchStore({ endpoint: '/api/annotations' }), []);
+  return <PatchMark store={store} />;
 }
 ```
 
@@ -55,7 +57,7 @@ Gate it by environment where you render it: `{process.env.NODE_ENV !== 'producti
 
 ## Let the agent read annotations itself (MCP)
 
-With a REST store (`createFetchStore`), agents that speak MCP — Claude Code, Cursor, Codex — pull open annotations and mark them resolved directly. No copy-pasting:
+With a REST store (`createFetchStore`), agents that speak MCP — Claude Code, Cursor, Codex — can read open annotations without copy-pasting:
 
 ```json
 {
@@ -68,7 +70,20 @@ With a REST store (`createFetchStore`), agents that speak MCP — Claude Code, C
 }
 ```
 
-Two tools: `list_open_annotations` and `resolve_annotation`. No MCP? The list panel's **handoff bar** copies a self-serve prompt that walks any agent through the same loop. Annotate a batch, hand it off, watch the panel tick items off.
+The default server exposes only `list_open_annotations`. It labels annotation fields as untrusted user input and supports both legacy MCP `2025-03-26` clients and stateless MCP `2026-07-28` clients. After human approval, opt into the mutating resolver explicitly:
+
+```json
+{
+  "mcpServers": {
+    "patch-mark-write": {
+      "command": "npx",
+      "args": ["-y", "patch-mark-mcp", "--endpoint", "http://localhost:3000/api/annotations", "--allow-resolve"]
+    }
+  }
+}
+```
+
+`resolve_annotation` then requires a summary, changed files, and checks run. It is never a substitute for review or backend authorization. No MCP? The list panel's **handoff bar** copies a trust-bounded prompt that treats annotations as data, not instructions.
 
 ## Themes
 
@@ -93,7 +108,8 @@ Every color token is a CSS custom property — see the [theming docs](https://lk
 | `store` | `createLocalStorageStore()` | Where annotations are persisted/sent |
 | `visible` | `false` | Show the launcher (attribute: `visible`) |
 | `themeName` | `'blue'` | Preset theme (attribute: `theme`) |
-| `requireAuth` | `false` | Token lock (attribute: `require-auth`) |
+| `pageKey` | current path + query + hash | Stable page identity; set it from a pushState router on route changes |
+| `requireAuth` | `false` | Server-validated token session (attribute: `require-auth`) |
 | `onError` | `null` | Error reporter for failed store ops |
 
 Full API reference, REST contract, access control, and framework recipes (Vue, vanilla HTML) are in the [docs](https://lkrcharon.github.io/patch-mark/docs/).

@@ -1,113 +1,60 @@
 # Store adapter & REST contract
 
-The store adapter is not an "extensibility feature" — it's the core of the product. This is how annotations get to where your agent can read them.
+The store boundary is a security boundary: values returned by a store are rendered in the page and may be handed to an agent. PatchMark validates the built-in adapters and validates store responses again before rendering, but your backend must still authorize and validate every request.
 
 ## Interface
 
-```typescript
+```ts
 interface AnnotationStore {
-  list(pagePath: string): Promise<Annotation[]>;
-  create(input: CreateAnnotationInput): Promise<Annotation>;
-  update?(id: string, patch: Partial<Annotation>): Promise<Annotation>;
-  delete?(id: string): Promise<void>;
-  reorder?(ids: string[]): Promise<void>;
+  list(pageKey: string, options?: StoreRequestOptions): Promise<Annotation[]>;
+  create(input: CreateAnnotationInput, options?: StoreRequestOptions): Promise<Annotation>;
+  update?(id: string, patch: { status: 'resolved' }, options?: StoreRequestOptions): Promise<Annotation>;
+  delete?(id: string, options?: StoreRequestOptions): Promise<void>;
+  reorder?(ids: string[], options?: StoreRequestOptions): Promise<void>;
+  validateAccess?(options?: StoreRequestOptions): Promise<void>;
 }
 ```
+
+`StoreRequestOptions` carries an `AbortSignal`; reorder and access validation also receive the current `pagePath`. Built-in page keys default to `pathname + search + hash`. Back/forward and hash navigation reload an open list automatically. For a pushState router, set `tool.pageKey` whenever the active route/content identity changes.
+
+`update` is intentionally narrow: the bundled client only resolves an annotation. Do not accept `Partial<Annotation>` from a browser or an agent. Give any richer workflow its own server command and authorization rule.
+
+List reordering is opt-in too. PatchMark shows a drag handle only when the store implements `reorder()`, disables it while a reorder is pending, and restores the prior order if the request fails.
 
 ## Built-in stores
 
-**`createLocalStorageStore({ key? })`** — default. Persists to `localStorage` as JSON. Falls back to an in-memory array in private browsing mode (no errors, no data loss during the session).
-
-**`createFetchStore({ endpoint, headers? })`** — REST API store. Talks to any backend that implements the endpoint contract below.
+- `createLocalStorageStore({ key? })` is the default. It uses durable localStorage when available. If a later write fails, it preserves the current session in memory **and rejects the operation** so the UI never claims a durable save that did not happen. Inspect `store.persistence` (`'durable' | 'memory'`) if you need to surface this state yourself.
+- `createFetchStore({ endpoint, headers?, timeoutMs? })` accepts a relative or absolute HTTP(S) endpoint without URL-embedded credentials. It uses URL-safe request construction, a 15-second default timeout, abort propagation, and strict request/response validation.
 
 ## REST endpoint contract
 
-When using `createFetchStore`, your server implements these routes:
+| Method | Path | Request | Response |
+| --- | --- | --- | --- |
+| `GET` | `{endpoint}?page=<page-key>` | — | `{ annotations: Annotation[] }` |
+| `POST` | `{endpoint}` | strict `CreateAnnotationInput` | `{ annotation: Annotation }` (201) |
+| `PATCH` | `{endpoint}/{id}` | `{ "status": "resolved" }` only | `{ annotation: Annotation }` |
+| `DELETE` | `{endpoint}/{id}` | — | `204` |
+| `POST` | `{endpoint}/reorder` | `{ page: string, ids: string[] }` | `204` |
 
-| Method | Path | Query | Request body | Response |
-|--------|------|-------|-------------|----------|
-| `GET` | `{endpoint}` | `?page=/dashboard` | — | `{ annotations: Annotation[] }` |
-| `POST` | `{endpoint}` | — | `CreateAnnotationInput` | `{ annotation: Annotation }` (201) |
-| `PATCH` | `{endpoint}/{id}` | — | `Partial<Annotation>` | `{ annotation: Annotation }` |
-| `DELETE` | `{endpoint}/{id}` | — | — | 204 |
-| `POST` | `{endpoint}/reorder` | — | `{ ids: string[] }` | 204 |
+Server rules:
 
-> **Server responsibilities:** the client sends `CreateAnnotationInput` only — your server assigns `id`, `createdAt`, and initializes `status: 'open'` on creation. Without `status`, the resolve lifecycle has no meaning. Incomplete implementations (e.g. a missing `PATCH`) fail loudly in the browser console (`[patch-mark] ...` warnings); set the component's `onError` callback to route them into your monitoring. When [access control](/guide/access-control) is enabled, every route — including `GET` — answers `401` to a missing or invalid Bearer token, and the component turns a 401 into its lock panel on its own.
+- Reject unknown fields and validate lengths, finite geometry, lifecycle values, and duplicate IDs at runtime.
+- Assign `id`, `createdAt`, and initial `status: 'open'` on the server. Never spread a network payload onto a persisted annotation.
+- Scope reorder to one exact page key and reject an ID set that does not exactly match that page.
+- Return `401` from **every** protected route, including `GET`, and return `503` for storage corruption/IO failures instead of treating them as an empty collection.
+- Use a transactional database or a real distributed lock in production. The included JSON-file backend is a single-process local/dev reference, not a multi-instance or serverless store.
 
-## Example server implementation
-
-Next.js Route Handler, file-based JSON store:
-
-```ts
-// app/api/annotations/route.ts
-import { randomUUID } from 'crypto';
-import { readFile, writeFile, mkdir, rename } from 'fs/promises';
-import path from 'path';
-import { NextRequest, NextResponse } from 'next/server';
-import type { Annotation } from 'patch-mark';
-
-const storePath = path.join(process.cwd(), '.data', 'annotations.json');
-
-export async function GET(request: NextRequest) {
-  const page = request.nextUrl.searchParams.get('page');
-  const annotations = await readAnnotations();
-  return NextResponse.json({
-    annotations: page ? annotations.filter(a => a.pagePath === page) : annotations,
-  });
-}
-
-export async function POST(request: NextRequest) {
-  const input = await request.json();
-  const annotation = { id: randomUUID(), ...input, createdAt: new Date().toISOString(), status: 'open' };
-  const annotations = await readAnnotations();
-  annotations.unshift(annotation);
-  await saveAnnotations(annotations.slice(0, 1000));
-  return NextResponse.json({ annotation }, { status: 201 });
-}
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const id = params.id;
-  const patch = await request.json();
-  const annotations = await readAnnotations();
-  const idx = annotations.findIndex(a => a.id === id);
-  if (idx === -1) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  annotations[idx] = { ...annotations[idx], ...patch };
-  await saveAnnotations(annotations);
-  return NextResponse.json({ annotation: annotations[idx] });
-}
-
-async function readAnnotations(): Promise<Annotation[]> {
-  try {
-    return JSON.parse(await readFile(storePath, 'utf8'));
-  } catch {
-    return []; // no file yet
-  }
-}
-
-async function saveAnnotations(annotations: Annotation[]): Promise<void> {
-  await mkdir(path.dirname(storePath), { recursive: true });
-  const tmp = `${storePath}.tmp`; // atomic write: tmp + rename
-  await writeFile(tmp, JSON.stringify(annotations, null, 2));
-  await rename(tmp, storePath);
-}
-```
-
-Your agent reads the JSON file (or calls `GET /api/annotations`) and processes each annotation with `status: 'open'`. After fixing the code, it calls `PATCH /api/annotations/{id}` with `{ status: 'resolved' }` to close the loop.
-
-The example above shows `GET`/`POST`/`PATCH`. For a copy-paste-ready implementation of all five routes (plus a matching client component, plus access control), see [`examples/nextjs-app-router/`](https://github.com/LKRCharon/patch-mark/tree/main/examples/nextjs-app-router) — it ships inside the npm package.
+The [`examples/nextjs-app-router/`](https://github.com/LKRCharon/patch-mark/tree/main/examples/nextjs-app-router) directory implements this restricted contract. It is a useful reference; replace its file store before a shared or horizontally scaled deployment.
 
 ## Custom store
 
-Implement the `AnnotationStore` interface and assign it:
-
 ```ts
 tool.store = {
-  async list(pagePath) { /* your logic */ },
-  async create(input) { /* your logic */ },
-  async update(id, patch) { /* optional */ },
-  async delete(id) { /* optional */ },
+  async list(pageKey, { signal } = {}) { /* query only this page */ },
+  async create(input, { signal } = {}) { /* validate and persist */ },
+  async update(id, patch) { /* only accept patch.status === 'resolved' */ },
+  async validateAccess() { /* protected server round-trip; reject 401 */ },
 };
 ```
+
+When `require-auth` is enabled, `validateAccess()` is required. It must make a server-authorized request and reject with `PatchMarkAuthError` on `401`; a token merely existing in browser storage is not considered a valid session.

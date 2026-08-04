@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import { handleMessage, parseArgs, type McpConfig } from '../src/mcp.js';
 import type { Annotation } from '../src/types.js';
 
-const CONFIG: McpConfig = { endpoint: 'http://localhost:3000/api/annotations', token: 'tok-1' };
+const CONFIG: McpConfig = {
+  endpoint: 'http://localhost:3000/api/annotations',
+  token: 'tok-1',
+  allowResolve: true,
+};
+const READ_ONLY_CONFIG: McpConfig = { endpoint: 'http://localhost:3000/api/annotations', token: 'tok-1' };
 
 function makeAnnotation(overrides: Partial<Annotation> = {}): Annotation {
   return {
@@ -65,13 +70,17 @@ test('notifications get no response', async () => {
   assert.equal(res, null);
 });
 
-test('tools/list exposes the two annotation tools', async () => {
+test('tools/list exposes resolve only when the server was explicitly authorized for writes', async () => {
   const res = await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, CONFIG);
   const { tools } = res!.result as { tools: Array<{ name: string }> };
   assert.deepEqual(
     tools.map((t) => t.name),
     ['list_open_annotations', 'resolve_annotation'],
   );
+
+  const readOnly = await handleMessage({ jsonrpc: '2.0', id: 22, method: 'tools/list' }, READ_ONLY_CONFIG);
+  const readOnlyTools = (readOnly!.result as { tools: Array<{ name: string }> }).tools;
+  assert.deepEqual(readOnlyTools.map((tool) => tool.name), ['list_open_annotations']);
 });
 
 test('unknown method yields -32601; unknown tool yields -32602', async () => {
@@ -105,7 +114,7 @@ test('list_open_annotations GETs the endpoint, filters resolved, sends the token
   assert.equal(calls.length, 1);
   assert.equal(
     calls[0].url,
-    'http://localhost:3000/api/annotations?page=%2Fdash%20board',
+    'http://localhost:3000/api/annotations?page=%2Fdash+board',
   );
   assert.equal((calls[0].init?.headers as Record<string, string>).authorization, 'Bearer tok-1');
 
@@ -138,10 +147,25 @@ test('list_open_annotations surfaces HTTP errors as tool errors', async (t) => {
 
 // --- resolve_annotation ---
 
-test('resolve_annotation PATCHes {endpoint}/{id} with status resolved', async (t) => {
-  const calls = stubFetch(t, () => jsonResponse({}));
+test('resolve_annotation PATCHes {endpoint}/{id} with status resolved after evidence is supplied', async (t) => {
+  const calls = stubFetch(t, () => jsonResponse({ annotation: makeAnnotation({ status: 'resolved' }) }));
   const res = await handleMessage(
-    { jsonrpc: '2.0', id: 8, method: 'tools/call', params: { name: 'resolve_annotation', arguments: { id: 'ann-1' } } },
+    {
+      jsonrpc: '2.0',
+      id: 8,
+      method: 'tools/call',
+      params: {
+        name: 'resolve_annotation',
+        arguments: {
+          id: 'ann-1',
+          evidence: {
+            summary: 'Adjusted the button spacing.',
+            files: ['src/Button.tsx'],
+            checks: ['npm test'],
+          },
+        },
+      },
+    },
     CONFIG,
   );
   assert.equal(calls.length, 1);
@@ -165,6 +189,56 @@ test('resolve_annotation rejects a missing id without calling fetch', async (t) 
   assert.equal(calls.length, 0);
   const result = res!.result as { isError?: boolean };
   assert.equal(result.isError, true);
+});
+
+test('read-only MCP configuration never exposes or executes resolve_annotation', async (t) => {
+  const calls = stubFetch(t, () => jsonResponse({ annotation: makeAnnotation({ status: 'resolved' }) }));
+  const res = await handleMessage(
+    { jsonrpc: '2.0', id: 10, method: 'tools/call', params: { name: 'resolve_annotation', arguments: {} } },
+    READ_ONLY_CONFIG,
+  );
+  assert.equal(calls.length, 0);
+  const result = res!.result as { isError?: boolean; content: Array<{ text: string }> };
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /disabled/);
+});
+
+test('modern discovery and tools/list include stateless protocol metadata', async () => {
+  const meta = { 'io.modelcontextprotocol/protocolVersion': '2026-07-28' };
+  const discovery = await handleMessage(
+    { jsonrpc: '2.0', id: 'discover', method: 'server/discover', params: { _meta: meta } },
+    READ_ONLY_CONFIG,
+  );
+  const discoveryResult = discovery!.result as {
+    resultType: string;
+    supportedVersions: string[];
+    _meta: Record<string, unknown>;
+  };
+  assert.equal(discoveryResult.resultType, 'complete');
+  assert.deepEqual(discoveryResult.supportedVersions, ['2026-07-28']);
+  assert.ok(discoveryResult._meta['io.modelcontextprotocol/serverInfo']);
+
+  const listed = await handleMessage(
+    { jsonrpc: '2.0', id: 'tools', method: 'tools/list', params: { _meta: meta } },
+    READ_ONLY_CONFIG,
+  );
+  const listResult = listed!.result as { resultType: string; ttlMs: number; cacheScope: string };
+  assert.equal(listResult.resultType, 'complete');
+  assert.equal(listResult.ttlMs, 300_000);
+  assert.equal(listResult.cacheScope, 'private');
+});
+
+test('modern requests reject unsupported protocol versions', async () => {
+  const res = await handleMessage(
+    {
+      jsonrpc: '2.0',
+      id: 'bad-version',
+      method: 'tools/list',
+      params: { _meta: { 'io.modelcontextprotocol/protocolVersion': '2099-01-01' } },
+    },
+    READ_ONLY_CONFIG,
+  );
+  assert.equal(res!.error?.code, -32022);
 });
 
 // --- parseArgs ---
@@ -191,6 +265,17 @@ test('parseArgs reads --endpoint (both forms), env fallback, trims trailing slas
 
 test('parseArgs throws without an endpoint', () => {
   assert.throws(() => parseArgs([], {}), /Missing endpoint/);
+});
+
+test('parseArgs rejects non-HTTP endpoints and URL-embedded credentials', () => {
+  assert.throws(
+    () => parseArgs(['--endpoint', 'file:///tmp/annotations'], {}),
+    /endpoint must use http: or https:/,
+  );
+  assert.throws(
+    () => parseArgs(['--endpoint', 'https://user:secret@example.com/api/annotations'], {}),
+    /endpoint must not contain credentials/,
+  );
 });
 
 test('parseArgs rejects a malformed endpoint URL', () => {

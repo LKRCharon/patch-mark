@@ -1,16 +1,19 @@
 # patch-mark + Next.js (App Router) example
 
-A copy-paste-ready backend for `createFetchStore`, implementing the full REST
-contract — `GET`, `POST`, `PATCH`, `DELETE`, and reorder — plus a client
-component wired with `patch-mark/react`.
+A **single-process local/development reference** for `createFetchStore`. It
+implements the restricted REST contract — `GET`, `POST`, resolve-only `PATCH`,
+`DELETE`, and page-scoped reorder — plus a client component wired with
+`patch-mark/react`. It is not a production backend: the JSON files and
+in-process queues do not coordinate multiple Node processes, serverless
+instances, or deployments.
 
 ## Files
 
 | File | What it does |
 | --- | --- |
 | `app/api/annotations/route.ts` | `GET ?page=` list, `POST` create (server assigns `id`, `createdAt`, `status: 'open'`) |
-| `app/api/annotations/[id]/route.ts` | `PATCH` update, `DELETE` remove |
-| `app/api/annotations/reorder/route.ts` | `POST { ids }` — persist drag order |
+| `app/api/annotations/[id]/route.ts` | `PATCH { status: 'resolved' }`, `DELETE` remove |
+| `app/api/annotations/reorder/route.ts` | `POST { page, ids }` — persist one page’s drag order |
 | `app/api/annotations/tokens/route.ts` | `POST` — mint access tokens (admin-guarded) |
 | `lib/annotations-store.ts` | JSON file persistence with atomic writes (`.data/annotations.json`) |
 | `lib/tokens.ts` / `lib/auth.ts` | Token storage and the `checkAuth` guard |
@@ -33,8 +36,10 @@ component wired with `patch-mark/react`.
    `PATCH /api/annotations/{id}` and `{ "status": "resolved" }`.
 
 The route handlers `await params`, which works on both Next 15+ and Next 14
-(the await is a harmless no-op there). Swap the JSON file for your database by
-editing `lib/annotations-store.ts` only — the route code stays untouched.
+(the await is a harmless no-op there). For a shared or production deployment,
+replace the JSON file with a transactional database and enforce authorization,
+validation, and page-scoped reorder in that adapter. Do not rely on the
+in-process queue across instances.
 
 ## Access control (optional)
 
@@ -65,5 +70,7 @@ reading) annotations. To lock the API down:
    ```
 
 Revoking is manual: remove the token from `.data/tokens.json`. Every endpoint
-answers `401` to a missing or invalid token, and the component turns that
-into its unlock UI on its own.
+answers `401` to a missing or invalid token. With `requireAuth`, the component
+uses a protected `validateAccess()` round-trip before exposing controls and
+returns to its unlock UI on a 401. This UI behavior is not a replacement for
+the backend checks above.

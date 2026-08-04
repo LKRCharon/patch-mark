@@ -28,7 +28,15 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run typecheck
+
+      - run: npm test
+
       - run: npm run build
+
+      - run: git diff --exit-code -- dist/patch-mark.js
+
+      - run: npm pack --dry-run
 
       # prepublishOnly re-runs the build as a safety net. No NODE_AUTH_TOKEN:
       # trusted publishing authenticates via the OIDC token above.

@@ -149,7 +149,7 @@ function buildShadowStyles(prefix: string): string {
   pointer-events: auto;
   overflow: hidden;
   white-space: nowrap;
-  translate: calc(var(--${cv}-dodge-sign, -1) * var(--${cv}-dodge-x, 0px)) 0;
+  translate: calc(var(${cv}-dodge-sign, -1) * var(${cv}-dodge-x, 0px)) 0;
 }
 
 .${prefix}-launcher svg {
@@ -281,13 +281,13 @@ function buildShadowStyles(prefix: string): string {
   z-index: 10000;
   width: min(21rem, calc(100vw - 7.5rem));
   overflow: hidden;
-  border: 1px solid var(--${cv}-line-strong);
+  border: 1px solid var(${cv}-line-strong);
   border-radius: 1rem;
   background: var(${cv}-panel-solid);
   box-shadow: 0 20px 56px rgba(7, 19, 33, 0.18);
   pointer-events: auto;
   cursor: auto;
-  translate: calc(var(--${cv}-dodge-sign, -1) * var(--${cv}-dodge-x, 0px)) 0;
+  translate: calc(var(${cv}-dodge-sign, -1) * var(${cv}-dodge-x, 0px)) 0;
   transition: translate 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 160ms ease;
 }
 
@@ -990,8 +990,11 @@ function buildShadowStyles(prefix: string): string {
 .${prefix}-highlight {
   position: fixed;
   border: 2px solid var(${cv}-accent);
-  background: var(${cv}-accent-soft);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85) inset;
+  /* Hover should identify the target, not wash out the content the reviewer
+     is trying to inspect. The selected state adds a slightly stronger ring. */
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85) inset,
+    0 0 0 2px color-mix(in srgb, var(${cv}-accent) 14%, transparent);
 }
 
 .${prefix}-highlight.is-selected {

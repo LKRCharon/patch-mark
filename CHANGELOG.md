@@ -4,6 +4,66 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-08-04
+
+### Security
+
+- **Closed the stored-XSS path.** Annotation records are strictly validated at
+  every built-in store boundary and again before UI use. List items are now
+  created with DOM APIs rather than interpolating record values into HTML.
+- **Narrowed the write contract.** Creation rejects unknown/mass-assignment
+  fields; the built-in browser and example backend only accept
+  `{ status: 'resolved' }` for an update; reorder is page-scoped and exact.
+- **Made auth state server-validated.** `require-auth` now requires a
+  `validateAccess()` store round-trip before picker/list controls open. A 401
+  clears the token and stale failures cannot invalidate a newer session.
+- **Established an agent trust boundary.** Prompts, handoffs, and MCP results
+  label annotation fields as untrusted data. The MCP server is read-only by
+  default; `resolve_annotation` requires explicit `--allow-resolve` plus
+  evidence of the verified change.
+- **Bound transport input.** Built-in REST/MCP endpoints only accept
+  credential-free HTTP(S) URLs, annotation collections are capped, and the
+  MCP stdio transport drops oversized requests rather than retaining them.
+- **Patched the documentation toolchain.** Vite is pinned to 6.4.3 and
+  PostCSS to 8.5.25 through the lockfile/override, leaving `npm audit` clean.
+
+### Added
+
+- Modern MCP `2026-07-28` discovery/stateless request support alongside the
+  legacy `2025-03-26` stdio handshake.
+- URL-safe fetch endpoints, abort propagation, default request timeouts, and
+  strict REST response validation.
+- `pageKey` support; the default identity now includes pathname, query, and
+  hash to keep routed views separate.
+- Persistence status for the local store and `PatchMarkPersistenceError` so a
+  failed durable write is never reported as a normal success.
+- Pull-request CI for typecheck, tests, build artifact drift, docs, and npm
+  pack validation.
+
+### Changed
+
+- React props are fully declarative: omitted store/labels/theme/themeName/
+  position/pageKey values reset to documented defaults, and refs are exposed
+  after the custom element is upgraded.
+- Picker highlights are outline-only. Hover labels measure themselves, avoid
+  target/mouse collisions on all sides, and compact when space is tight.
+- Multiple mounted components now coordinate document-level picker resources;
+  only the most recently opened tool is active.
+
+### Fixed
+
+- Restored functional compose-panel dodge CSS and return-to-dock behavior.
+- Made edge-collapse reachable by snapping from the release pointer rather
+  than an on-screen-clamped launcher centre.
+- Prevented expansion to `<body>` from producing an empty selector.
+- Prevented stale list/create requests from mixing annotations across page
+  keys or overwriting current loading state.
+- Hide non-persistent reorder controls, serialize a page reorder while it is
+  pending, and keep stale resolve/reorder results from changing a new route or
+  replacement store.
+- Kept a live text-selection range for overlay geometry through reflow and
+  preserved quote context when expanding/shrinking selection.
+
 ## [0.9.4] - 2026-08-03
 
 ### Fixed

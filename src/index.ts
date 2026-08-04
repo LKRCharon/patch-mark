@@ -8,9 +8,19 @@ if (typeof customElements !== 'undefined' && !customElements.get(ELEMENT_TAG)) {
 
 // Re-export everything for programmatic usage
 export { PatchMark } from './PatchMark.js';
-export { createLocalStorageStore } from './stores/localStorage.js';
+export { createLocalStorageStore, PatchMarkPersistenceError } from './stores/localStorage.js';
 export { createFetchStore, createLocalAnnotation, PatchMarkAuthError } from './stores/fetch.js';
 export type { FetchStoreOptions } from './stores/fetch.js';
+export {
+  annotationLimits,
+  parseAnnotation,
+  parseAnnotationResponse,
+  parseAnnotations,
+  parseAnnotationsResponse,
+  parseCreateAnnotation,
+  parseResolvePatch,
+  PatchMarkValidationError,
+} from './schema.js';
 export { getAuthToken, setAuthToken, clearAuthToken } from './auth.js';
 export { formatAnnotationAsPrompt, formatAnnotationsAsPrompt, formatHandoffPrompt } from './prompt.js';
 export { defaultLabels } from './labels.js';
@@ -29,6 +39,8 @@ export type {
   PatchMarkErrorContext,
   PickerTarget,
   PropertyChange,
+  ResolveAnnotationPatch,
+  StoreRequestOptions,
   ThemeName,
   ToolMode,
 } from './types.js';

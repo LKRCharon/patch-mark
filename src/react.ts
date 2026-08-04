@@ -1,82 +1,90 @@
 import { createElement, forwardRef, useEffect, useRef } from 'react';
-import type { MutableRefObject } from 'react';
+import type { ForwardedRef, MutableRefObject } from 'react';
 import type { AnnotationLabels, AnnotationStore, AnnotationTheme, PatchMarkErrorContext } from './types.js';
 import type { PatchMark as PatchMarkElement } from './PatchMark.js';
 
 export interface PatchMarkProps {
-  /** Where annotations are persisted/sent. Defaults to the localStorage store. */
+  /** Where annotations are persisted/sent. Defaults to a fresh localStorage store. */
   store?: AnnotationStore;
-  /** UI text overrides, merged over the default labels. */
+  /** UI text overrides, merged over the package defaults on every update. */
   labels?: Partial<AnnotationLabels>;
-  /** Fine-grained accent overrides, applied on top of the active preset. */
+  /** Fine-grained accent overrides, reset when omitted. */
   theme?: AnnotationTheme;
-  /** Preset theme name ('blue' | 'violet' | 'emerald' | 'orange' | 'rose', or a custom CSS preset). */
+  /** Preset theme name, reset to blue when omitted. */
   themeName?: string;
-  /**
-   * Whether the launcher is shown on the page. Defaults to true: rendering
-   * the component is the opt-in, so gate it with your own environment check:
-   *
-   *   {process.env.NODE_ENV !== 'production' && <PatchMark ... />}
-   */
+  /** Stable annotation page key; defaults to pathname + query + hash. */
+  pageKey?: string | null;
+  /** Whether the launcher is shown. Defaults to true in the React wrapper. */
   visible?: boolean;
-  /**
-   * Called when a store operation fails (replaces the default console.warn).
-   * Wire it to your monitoring to catch an incomplete backend early.
-   */
+  /** Called when a store operation fails. */
   onError?: (error: Error, context: PatchMarkErrorContext) => void;
   /**
-   * Lock the tool behind an access token (?pm_token= sharing links, or the
-   * built-in lock panel). Off by default.
+   * Require a store with validateAccess() and a server-side authorization
+   * check. This is not a substitute for backend authorization.
    */
   requireAuth?: boolean;
-  /**
-   * Dock position of the launcher/panel: right-center (default), right-top,
-   * right-bottom, left-center, left-top, left-bottom.
-   */
+  /** Dock position: right-center, right-top, right-bottom, left-center, left-top, or left-bottom. */
   position?: string;
 }
 
+function assignRef(
+  target: ForwardedRef<PatchMarkElement>,
+  value: PatchMarkElement | null,
+): void {
+  if (typeof target === 'function') target(value);
+  else if (target) (target as MutableRefObject<PatchMarkElement | null>).current = value;
+}
+
 /**
- * React wrapper around the <patch-mark> custom element.
+ * Declarative React wrapper around <patch-mark>.
  *
- * - SSR-safe: the element module is dynamically imported client-side only.
- * - Props are (re)applied whenever they change, once the element is loaded.
- * - The forwarded ref points at the underlying element, so `open()`,
- *   `close()`, `store`, etc. stay reachable.
+ * The forwarded ref is populated only after the custom element has loaded and
+ * upgraded, so imperative calls such as ref.current?.open() never race the
+ * client-side dynamic import. Every prop assignment is complete: removing a
+ * prop restores the documented default instead of retaining stale UI state.
  */
 export const PatchMark = forwardRef<PatchMarkElement, PatchMarkProps>(function PatchMark(
-  { store, labels, theme, themeName, visible = true, onError, requireAuth = false, position },
+  { store, labels, theme, themeName, pageKey, visible = true, onError, requireAuth = false, position },
   forwardedRef,
 ) {
   const ref = useRef<PatchMarkElement | null>(null);
+  // Keep one default store for this mounted wrapper. Re-rendering because a
+  // different prop changed must not discard a memory-fallback session or
+  // spuriously reset the element's data boundary.
+  const defaultStoreRef = useRef<AnnotationStore | null>(null);
+  const forwardedRefRef = useRef(forwardedRef);
+  forwardedRefRef.current = forwardedRef;
 
   useEffect(() => {
     let cancelled = false;
-    // Dynamic import: the module extends HTMLElement and must run client-side only.
-    void import('patch-mark').then(() => {
-      if (cancelled || !ref.current) return;
-      const el = ref.current;
-      if (store) el.store = store;
-      if (labels) el.labels = { ...el.labels, ...labels };
-      if (theme) el.theme = theme;
-      if (themeName) el.themeName = themeName;
-      el.visible = visible;
-      el.onError = onError ?? null;
-      el.requireAuth = requireAuth;
-      if (position) el.position = position;
-    });
+    void import('patch-mark')
+      .then(async (module) => {
+        await customElements.whenDefined('patch-mark');
+        if (cancelled || !ref.current) return;
+        const el = ref.current;
+        defaultStoreRef.current ??= module.createLocalStorageStore();
+        el.store = store ?? defaultStoreRef.current;
+        el.labels = { ...module.defaultLabels, ...labels };
+        el.theme = theme ?? {};
+        el.themeName = themeName ?? 'blue';
+        el.pageKey = pageKey ?? null;
+        el.visible = visible;
+        el.onError = onError ?? null;
+        el.requireAuth = requireAuth;
+        el.position = position ?? 'right-center';
+        assignRef(forwardedRefRef.current, el);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) console.error('[patch-mark] failed to load the custom element:', error);
+      });
     return () => {
       cancelled = true;
     };
-  }, [store, labels, theme, themeName, visible, onError, requireAuth, position]);
+  }, [store, labels, theme, themeName, pageKey, visible, onError, requireAuth, position]);
 
-  return createElement('patch-mark', {
-    ref: (el: PatchMarkElement | null) => {
-      ref.current = el;
-      if (typeof forwardedRef === 'function') forwardedRef(el);
-      else if (forwardedRef) (forwardedRef as MutableRefObject<PatchMarkElement | null>).current = el;
-    },
-  });
+  useEffect(() => () => assignRef(forwardedRefRef.current, null), []);
+
+  return createElement('patch-mark', { ref });
 });
 
 // JSX type support for using the raw <patch-mark> element directly:
