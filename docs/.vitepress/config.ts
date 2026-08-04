@@ -7,6 +7,10 @@ export default defineConfig({
   base: '/patch-mark/docs/',
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/patch-mark/docs/logo.svg' }],
+    ['meta', { property: 'og:image', content: 'https://lkrcharon.github.io/patch-mark/docs/patch-mark-vibcod.png' }],
+    ['meta', { property: 'og:image:width', content: '1280' }],
+    ['meta', { property: 'og:image:height', content: '720' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
     [

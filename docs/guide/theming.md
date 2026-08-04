@@ -41,6 +41,20 @@ For one-off tweaks, set the variables inline or from your own stylesheet:
 <patch-mark style="--pm-accent: #0a84ff"></patch-mark>
 ```
 
+::: warning Keep the soft accent translucent
+`--pm-accent-soft` is painted over the target while picking. Replacing its
+default translucent value with a solid color such as `#dfe4ff` can hide the
+element and look like a z-index bug. Keep an alpha channel, or make it fully
+transparent when you only want the outline:
+
+```js
+tool.theme = { accentSoft: 'transparent' };
+```
+
+The component's high stacking level is intentional so the picker stays above
+the host page; lowering its z-index is not the fix for an opaque custom fill.
+:::
+
 | Variable | Default | Controls |
 | --- | --- | --- |
 | `--pm-accent` | <span class="pm-swatch" style="background:#0058d0"></span> `#0058d0` | launcher, selection highlight, primary buttons |

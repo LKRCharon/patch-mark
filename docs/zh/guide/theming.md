@@ -41,6 +41,19 @@ patch-mark[theme="brand"] {
 <patch-mark style="--pm-accent: #0a84ff"></patch-mark>
 ```
 
+::: warning 淡色强调必须保持半透明
+选取元素时，`--pm-accent-soft` 会覆盖在目标区域上。如果把默认半透明值
+改成 `#dfe4ff` 这类实色，目标就会被遮住，看起来很像 z-index 错误。
+请保留 alpha 通道；如果只想显示轮廓，可以直接设为透明：
+
+```js
+tool.theme = { accentSoft: 'transparent' };
+```
+
+组件使用较高层级是为了让选取器稳定显示在宿主页之上。自定义填充不透明时，
+正确修法是恢复半透明或透明色，而不是降低 z-index。
+:::
+
 | 变量 | 默认 | 控制 |
 | --- | --- | --- |
 | `--pm-accent` | <span class="pm-swatch" style="background:#0058d0"></span> `#0058d0` | 启动按钮、选中高亮、主按钮 |
