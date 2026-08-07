@@ -306,7 +306,9 @@ export class PatchMark extends BaseHTMLElement {
   private shadow: ShadowRoot | null = null;
   private overlayEl: HTMLElement | null = null;
   private panelEl: HTMLElement | null = null;
+  private launcherWrapEl: HTMLDivElement | null = null;
   private launcherEl: HTMLButtonElement | null = null;
+  private collapseButtonEl: HTMLButtonElement | null = null;
 
   // Event handler refs (for cleanup)
   private boundMove: ((e: MouseEvent) => void) | null = null;
@@ -422,8 +424,8 @@ export class PatchMark extends BaseHTMLElement {
 
   private updateVisibility(): void {
     const isVisible = this.visible;
-    if (this.launcherEl) {
-      this.launcherEl.style.display = isVisible ? '' : 'none';
+    if (this.launcherWrapEl) {
+      this.launcherWrapEl.style.display = isVisible ? '' : 'none';
     }
     if (!isVisible && this.mode !== 'closed') {
       this.closeTool();
@@ -462,12 +464,23 @@ export class PatchMark extends BaseHTMLElement {
       this.panelEl.setAttribute(UI_ATTR, '');
       this.shadow.appendChild(this.panelEl);
 
-      // Build launcher
+      // Build launcher. The collapse control is a sibling native button, not
+      // a nested interactive element inside the launcher button. Besides
+      // making keyboard activation reliable, this keeps the control outside
+      // the launcher label's clipping boundary.
+      this.launcherWrapEl = document.createElement('div');
+      this.launcherWrapEl.className = `${CLASS_PREFIX}-launcher-wrap`;
       this.launcherEl = document.createElement('button');
       this.launcherEl.className = `${CLASS_PREFIX}-launcher`;
       this.launcherEl.type = 'button';
+      this.collapseButtonEl = document.createElement('button');
+      this.collapseButtonEl.className = `${CLASS_PREFIX}-collapse-btn`;
+      this.collapseButtonEl.type = 'button';
+      this.collapseButtonEl.innerHTML = ICONS.chevronLeft;
+      this.collapseButtonEl.addEventListener('click', () => this.collapseLauncher());
       this.setupLauncherInteraction();
-      this.shadow.appendChild(this.launcherEl);
+      this.launcherWrapEl.append(this.launcherEl, this.collapseButtonEl);
+      this.shadow.appendChild(this.launcherWrapEl);
       this.restoreLauncherState();
 
       // Delegate panel clicks
@@ -1644,13 +1657,7 @@ export class PatchMark extends BaseHTMLElement {
   private setupLauncherInteraction(): void {
     if (!this.launcherEl) return;
     this.launcherEl.addEventListener('pointerdown', (e) => this.onLauncherPointerDown(e));
-    this.launcherEl.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      if (target.closest(`.${CLASS_PREFIX}-collapse-btn`)) {
-        e.stopPropagation();
-        this.collapseLauncher();
-        return;
-      }
+    this.launcherEl.addEventListener('click', () => {
       if (this.suppressNextClick) {
         this.suppressNextClick = false;
         return;
@@ -1665,7 +1672,7 @@ export class PatchMark extends BaseHTMLElement {
   }
 
   private onLauncherPointerDown(e: PointerEvent): void {
-    if (this.launcherCollapsed || e.button !== 0 || !this.launcherEl) return;
+    if (this.launcherCollapsed || e.button !== 0 || !this.launcherEl || !this.launcherWrapEl) return;
     const rect = this.launcherEl.getBoundingClientRect();
     this.dragState = {
       startX: e.clientX,
@@ -1680,14 +1687,14 @@ export class PatchMark extends BaseHTMLElement {
   }
 
   private boundLauncherMove = (e: PointerEvent): void => {
-    if (!this.dragState || !this.launcherEl) return;
+    if (!this.dragState || !this.launcherEl || !this.launcherWrapEl) return;
     const dx = e.clientX - this.dragState.startX;
     const dy = e.clientY - this.dragState.startY;
     if (!this.dragState.moved && Math.hypot(dx, dy) < 4) return;
     if (!this.dragState.moved) {
       this.dragState.moved = true;
       this.launcherFloating = true;
-      this.launcherEl.classList.add('is-floating', 'is-dragging');
+      this.launcherWrapEl.classList.add('is-floating', 'is-dragging');
     }
     // Clamp so the launcher can't be dragged fully off-screen and lost.
     const maxX = window.innerWidth - this.launcherEl.offsetWidth;
@@ -1695,9 +1702,9 @@ export class PatchMark extends BaseHTMLElement {
     const x = Math.max(0, Math.min(this.dragState.originX + dx, maxX));
     const y = Math.max(0, Math.min(this.dragState.originY + dy, maxY));
     this.launcherPos = { x, y };
-    this.launcherEl.style.left = `${x}px`;
-    this.launcherEl.style.top = `${y}px`;
-    this.launcherEl.style.right = '';
+    this.launcherWrapEl.style.left = `${x}px`;
+    this.launcherWrapEl.style.top = `${y}px`;
+    this.launcherWrapEl.style.right = '';
   };
 
   private boundLauncherUp = (e: PointerEvent): void => {
@@ -1706,7 +1713,7 @@ export class PatchMark extends BaseHTMLElement {
     document.removeEventListener('pointercancel', this.boundLauncherUp);
     if (!this.dragState) return;
     const wasDrag = this.dragState.moved;
-    this.launcherEl?.classList.remove('is-dragging');
+    this.launcherWrapEl?.classList.remove('is-dragging');
     this.dragState = null;
     if (wasDrag) {
       this.suppressNextClick = true;
@@ -1737,17 +1744,17 @@ export class PatchMark extends BaseHTMLElement {
   }
 
   private expandLauncher(): void {
-    if (!this.launcherCollapsed || !this.launcherEl) return;
+    if (!this.launcherCollapsed || !this.launcherWrapEl) return;
     this.launcherCollapsed = false;
     // Restore position: floating coords, or clear inline styles for dock.
     if (this.launcherFloating && this.launcherPos) {
-      this.launcherEl.style.left = `${this.launcherPos.x}px`;
-      this.launcherEl.style.top = `${this.launcherPos.y}px`;
-      this.launcherEl.style.right = '';
+      this.launcherWrapEl.style.left = `${this.launcherPos.x}px`;
+      this.launcherWrapEl.style.top = `${this.launcherPos.y}px`;
+      this.launcherWrapEl.style.right = '';
     } else {
-      this.launcherEl.style.left = '';
-      this.launcherEl.style.top = '';
-      this.launcherEl.style.right = '';
+      this.launcherWrapEl.style.left = '';
+      this.launcherWrapEl.style.top = '';
+      this.launcherWrapEl.style.right = '';
     }
     this.updatePanel();
     this.updateOverlay();
@@ -1769,7 +1776,7 @@ export class PatchMark extends BaseHTMLElement {
   }
 
   private restoreLauncherState(): void {
-    if (!this.launcherEl) return;
+    if (!this.launcherWrapEl) return;
     try {
       const raw = localStorage.getItem('patch-mark:launcher');
       if (!raw) return;
@@ -1781,9 +1788,9 @@ export class PatchMark extends BaseHTMLElement {
         const y = Math.max(0, Math.min(state.pos.y, window.innerHeight - 60));
         this.launcherFloating = true;
         this.launcherPos = { x, y };
-        this.launcherEl.classList.add('is-floating');
-        this.launcherEl.style.left = `${x}px`;
-        this.launcherEl.style.top = `${y}px`;
+        this.launcherWrapEl.classList.add('is-floating');
+        this.launcherWrapEl.style.left = `${x}px`;
+        this.launcherWrapEl.style.top = `${y}px`;
       }
       if (state.collapsed) this.collapseLauncher();
     } catch { /* ignore malformed */ }
@@ -2048,34 +2055,36 @@ export class PatchMark extends BaseHTMLElement {
   }
 
   private updatePanel(): void {
-    if (!this.panelEl || !this.launcherEl) return;
+    if (!this.panelEl || !this.launcherWrapEl || !this.launcherEl || !this.collapseButtonEl) return;
+
+    this.collapseButtonEl.setAttribute('aria-label', this.labels.collapse ?? '收起');
+    this.collapseButtonEl.title = this.labels.collapse ?? '收起';
 
     // Collapsed (peeked to edge): hide panel, render launcher as a slim tab.
     if (this.launcherCollapsed) {
       this.panelEl.style.display = 'none';
       this.panelEl.innerHTML = '';
-      this.launcherEl.classList.add('is-collapsed');
+      this.launcherWrapEl.classList.add('is-collapsed');
       // Peek toward the edge the launcher was actually dragged to, not the
       // configured dock side — avoids the tab jumping sides on expand.
       const side = this.launcherFloating && this.launcherPos
         ? (this.launcherPos.x + this.launcherEl.offsetWidth / 2 < window.innerWidth / 2 ? 'left' : 'right')
         : this.dockSide;
-      this.launcherEl.style.left = side === 'left' ? '0.5rem' : '';
-      this.launcherEl.style.right = side === 'right' ? '0.5rem' : '';
-      this.launcherEl.style.top = `${Math.round(window.innerHeight / 2 - 32)}px`;
+      this.launcherWrapEl.style.left = side === 'left' ? '0.5rem' : '';
+      this.launcherWrapEl.style.right = side === 'right' ? '0.5rem' : '';
+      this.launcherWrapEl.style.top = `${Math.round(window.innerHeight / 2 - 32)}px`;
       this.launcherEl.innerHTML = `${ICONS.annotate}<span>${escapeHtml(this.labels.picker)}</span>`;
       return;
     }
-    this.launcherEl.classList.remove('is-collapsed');
+    this.launcherWrapEl.classList.remove('is-collapsed');
 
     const isOpen = this.mode !== 'closed';
 
     // Update launcher
     this.launcherEl.classList.toggle('is-active', isOpen);
-    const collapseBtn = `<span class="${CLASS_PREFIX}-collapse-btn" role="button" tabindex="0" data-action="collapse" aria-label="${escapeHtml(this.labels.collapse ?? '收起')}">${ICONS.chevronLeft}</span>`;
     this.launcherEl.innerHTML = isOpen
-      ? `${ICONS.x}<span>${escapeHtml(this.labels.close)}</span>${collapseBtn}`
-      : `${ICONS.annotate}<span>${escapeHtml(this.labels.picker)}</span>${collapseBtn}`;
+      ? `${ICONS.x}<span>${escapeHtml(this.labels.close)}</span>`
+      : `${ICONS.annotate}<span>${escapeHtml(this.labels.picker)}</span>`;
 
     if (!isOpen) {
       this.panelEl.style.display = 'none';

@@ -124,6 +124,14 @@ function buildShadowStyles(prefix: string): string {
 }
 
 /* ---- Launcher button ---- */
+.${prefix}-launcher-wrap {
+  position: relative;
+  display: inline-flex;
+  pointer-events: auto;
+  translate: calc(var(${cv}-dodge-sign, -1) * var(${cv}-dodge-x, 0px)) 0;
+  transition: translate 260ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .${prefix}-launcher {
   display: inline-flex;
   align-items: center;
@@ -143,13 +151,11 @@ function buildShadowStyles(prefix: string): string {
   transition: border-radius 300ms cubic-bezier(0.4, 0, 0.2, 1),
               box-shadow 200ms ease,
               transform 200ms ease,
-              background 200ms ease,
-              translate 260ms cubic-bezier(0.4, 0, 0.2, 1);
+              background 200ms ease;
   cursor: pointer;
   pointer-events: auto;
   overflow: hidden;
   white-space: nowrap;
-  translate: calc(var(${cv}-dodge-sign, -1) * var(${cv}-dodge-x, 0px)) 0;
 }
 
 .${prefix}-launcher svg {
@@ -194,22 +200,22 @@ function buildShadowStyles(prefix: string): string {
 }
 
 /* ---- Launcher: drag, collapse-to-edge, hover-peek ---- */
-.${prefix}-launcher {
-  position: relative;
-}
-
-.${prefix}-launcher.is-floating {
+.${prefix}-launcher-wrap.is-floating {
   position: fixed;
   translate: 0;
 }
 
-.${prefix}-launcher.is-dragging {
+.${prefix}-launcher-wrap.is-dragging .${prefix}-launcher {
   transition: none;
   cursor: grabbing;
 }
 
-.${prefix}-launcher.is-collapsed {
+.${prefix}-launcher-wrap.is-collapsed {
   position: fixed;
+  translate: 0;
+}
+
+.${prefix}-launcher-wrap.is-collapsed .${prefix}-launcher {
   width: 0.5rem;
   min-width: 0;
   height: 4rem;
@@ -218,22 +224,22 @@ function buildShadowStyles(prefix: string): string {
   overflow: hidden;
 }
 
-.${prefix}-launcher.is-collapsed > svg,
-.${prefix}-launcher.is-collapsed > span {
+.${prefix}-launcher-wrap.is-collapsed .${prefix}-launcher > svg,
+.${prefix}-launcher-wrap.is-collapsed .${prefix}-launcher > span {
   display: none;
 }
 
-.${prefix}-launcher.is-collapsed:hover {
+.${prefix}-launcher-wrap.is-collapsed:hover .${prefix}-launcher {
   width: auto;
   padding: 0 0.9rem;
   border-radius: 0.9rem;
 }
 
-.${prefix}-launcher.is-collapsed:hover > svg {
+.${prefix}-launcher-wrap.is-collapsed:hover .${prefix}-launcher > svg {
   display: inline-flex;
 }
 
-.${prefix}-launcher.is-collapsed:hover > span {
+.${prefix}-launcher-wrap.is-collapsed:hover .${prefix}-launcher > span {
   display: inline-flex;
   max-width: 5rem;
   opacity: 1;
@@ -244,27 +250,38 @@ function buildShadowStyles(prefix: string): string {
   position: absolute;
   top: -0.45rem;
   right: -0.45rem;
+  z-index: 1;
   width: 1.15rem;
   height: 1.15rem;
+  border: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
+  padding: 0;
   background: var(${cv}-panel-solid);
   color: var(${cv}-accent);
+  font: inherit;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
   opacity: 0;
   pointer-events: none;
   transition: opacity 150ms ease;
 }
 
-.${prefix}-launcher:hover .${prefix}-collapse-btn {
+.${prefix}-launcher-wrap:hover .${prefix}-collapse-btn,
+.${prefix}-collapse-btn:focus-visible {
   opacity: 1;
   pointer-events: auto;
 }
 
-.${prefix}-launcher.is-collapsed .${prefix}-collapse-btn,
-.${prefix}-launcher.is-dragging .${prefix}-collapse-btn {
+.${prefix}-collapse-btn:focus-visible {
+  outline: 2px solid var(${cv}-accent);
+  outline-offset: 2px;
+}
+
+.${prefix}-launcher-wrap.is-collapsed .${prefix}-collapse-btn,
+.${prefix}-launcher-wrap.is-dragging .${prefix}-collapse-btn {
   display: none;
 }
 
@@ -279,7 +296,11 @@ function buildShadowStyles(prefix: string): string {
      panel isn't visually pierced by the highlight frame while typing. */
   position: relative;
   z-index: 10000;
+  display: flex;
+  flex-direction: column;
   width: min(21rem, calc(100vw - 7.5rem));
+  max-height: calc(100vh - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
   overflow: hidden;
   border: 1px solid var(${cv}-line-strong);
   border-radius: 1rem;
@@ -307,6 +328,7 @@ function buildShadowStyles(prefix: string): string {
 }
 
 .${prefix}-panel-header {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -376,6 +398,14 @@ function buildShadowStyles(prefix: string): string {
 /* ---- Picker note ---- */
 .${prefix}-picker-note,
 .${prefix}-compose,
+.${prefix}-list,
+.${prefix}-locked {
+  min-height: 0;
+  flex-shrink: 1;
+}
+
+.${prefix}-picker-note,
+.${prefix}-compose,
 .${prefix}-list {
   padding: 1rem;
 }
@@ -385,6 +415,7 @@ function buildShadowStyles(prefix: string): string {
   grid-template-columns: auto 1fr;
   column-gap: 0.65rem;
   align-items: center;
+  overflow-y: auto;
 }
 
 .${prefix}-picker-note svg {
@@ -423,6 +454,7 @@ function buildShadowStyles(prefix: string): string {
   gap: 0.6rem;
   justify-items: start;
   padding: 1rem;
+  overflow-y: auto;
 }
 
 .${prefix}-locked > svg {
@@ -467,6 +499,10 @@ function buildShadowStyles(prefix: string): string {
 }
 
 /* ---- Compose ---- */
+.${prefix}-compose {
+  overflow-y: auto;
+}
+
 .${prefix}-target {
   display: flex;
   flex-wrap: wrap;
@@ -777,6 +813,7 @@ function buildShadowStyles(prefix: string): string {
 
 /* ---- Handoff bar (batch copy CTA pinned under the list) ---- */
 .${prefix}-handoff-bar {
+  flex: none;
   padding: 0.6rem 1rem 0.85rem;
   border-top: 1px solid var(${cv}-line);
 }

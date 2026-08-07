@@ -1,5 +1,6 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { PatchMark } from '../src/PatchMark.js';
 import { defaultLabels } from '../src/labels.js';
 import { shadowStyles } from '../src/styles.js';
@@ -232,4 +233,21 @@ test('resolved annotation status icon has an explicit compact size', () => {
     shadowStyles,
     /\.pm-item-status svg\s*\{\s*width:\s*0\.78rem;\s*height:\s*0\.78rem;/,
   );
+});
+
+test('launcher collapse control is a native sibling button', () => {
+  const source = readFileSync('src/PatchMark.ts', 'utf8');
+
+  assert.match(source, /this\.collapseButtonEl = document\.createElement\('button'\);/);
+  assert.match(source, /this\.launcherWrapEl\.append\(this\.launcherEl, this\.collapseButtonEl\);/);
+  assert.doesNotMatch(source, /<span class="\$\{CLASS_PREFIX\}-collapse-btn" role="button"/);
+});
+
+test('panel caps its height and scrolls long editor content', () => {
+  assert.match(
+    shadowStyles,
+    /\.pm-panel\s*\{[\s\S]*?max-height:\s*calc\(100dvh - 1\.5rem\);/,
+  );
+  assert.match(shadowStyles, /\.pm-compose\s*\{\s*overflow-y:\s*auto;/);
+  assert.match(shadowStyles, /\.pm-panel-header\s*\{\s*flex:\s*none;/);
 });
