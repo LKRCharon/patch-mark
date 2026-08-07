@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-08-07
+
+### Fixed
+
+- Constrained the resolved-status checkmark to the same compact icon size as
+  other annotation controls. It previously fell back to the browser SVG
+  default viewport and could occupy most of an annotation card.
+
 ## [1.0.0] - 2026-08-04
 
 ### Security

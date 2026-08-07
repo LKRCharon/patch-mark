@@ -943,6 +943,15 @@ function buildShadowStyles(prefix: string): string {
   letter-spacing: 0.03em;
 }
 
+/* SVG has a browser default viewport of 300 × 150px when left unconstrained.
+   The resolved badge is the only status icon outside an action button, so it
+   needs its own explicit bounds. */
+.${prefix}-item-status svg {
+  width: 0.78rem;
+  height: 0.78rem;
+  flex: none;
+}
+
 .${prefix}-item strong {
   overflow: hidden;
   color: var(${cv}-ink);

@@ -2,6 +2,7 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { PatchMark } from '../src/PatchMark.js';
 import { defaultLabels } from '../src/labels.js';
+import { shadowStyles } from '../src/styles.js';
 import type { Annotation, ElementTarget, PropertyChange, ToolMode } from '../src/types.js';
 
 type PatchMarkInternals = {
@@ -224,4 +225,11 @@ test('page identity keeps query/hash and reactive labels reset missing fields to
   tool.labels = { picker: 'Choose target' };
   assert.equal(tool.labels.picker, 'Choose target');
   assert.equal(tool.labels.list, defaultLabels.list);
+});
+
+test('resolved annotation status icon has an explicit compact size', () => {
+  assert.match(
+    shadowStyles,
+    /\.pm-item-status svg\s*\{\s*width:\s*0\.78rem;\s*height:\s*0\.78rem;/,
+  );
 });
