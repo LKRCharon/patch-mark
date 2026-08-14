@@ -1811,9 +1811,6 @@ export class PatchMark extends BaseHTMLElement {
       case 'list':
         this.openList();
         break;
-      case 'close':
-        this.closeTool();
-        break;
       case 'send':
         this.submitAnnotation();
         break;
@@ -2112,9 +2109,6 @@ export class PatchMark extends BaseHTMLElement {
             ${escapeHtml(this.labels.list)}
           </button>
         </div>
-        <button type="button" class="${CLASS_PREFIX}-close" data-action="close" aria-label="${escapeHtml(this.labels.close)}">
-          ${ICONS.x}
-        </button>
       </div>`;
     this.panelEl.innerHTML = `${header}${this.renderPanelContent()}`;
 

@@ -1,0 +1,48 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>patch-mark hostile CSS</title>
+<style>
+  /* 攻击 1：元素选择器直接命中 host —— 规范上外部规则胜过 :host */
+  patch-mark { font-size: 40px !important; color: red !important; line-height: 3 !important; }
+  /* 攻击 2：通用选择器 + !important，模拟激进的 reset / Tailwind preflight */
+  * { box-sizing: content-box !important; letter-spacing: 2px !important; }
+  /* 攻击 3：宿主页面偶然定义了同名 CSS 变量 */
+  :root { --pm-accent: hotpink; --pm-panel-solid: #000; --pm-dur-base: 4s; }
+  /* 攻击 4：类名撞车 */
+  .pm-picker-active { outline: 8px dashed lime !important; }
+  /* 攻击 5：常见全局 button 样式 */
+  button { text-transform: uppercase !important; border: 4px solid orange !important; }
+  body { font-family: "Comic Sans MS", cursive; margin: 0; padding: 2rem; }
+</style></head>
+<body>
+  <h2>Hostile CSS environment</h2>
+  <p>页面注入了 5 类恶意/常见全局样式，用来测 patch-mark 的隔离。</p>
+  <script type="module" src="/dist/patch-mark.js"></script>
+  <patch-mark visible></patch-mark>
+  <script type="module">
+    await customElements.whenDefined('patch-mark');
+    await new Promise(r => setTimeout(r, 500));
+    const el = document.querySelector('patch-mark');
+    const sr = el.shadowRoot;
+    const launcher = sr.querySelector('.pm-launcher');
+    const host = getComputedStyle(el);
+    const lc = getComputedStyle(launcher);
+    const out = {
+      'host font-size (期望 16px)': host.fontSize,
+      'host color (期望深色)': host.color,
+      'host line-height (期望 24px)': host.lineHeight,
+      'launcher font-size (继承自 host)': lc.fontSize,
+      'launcher letter-spacing (期望 normal)': lc.letterSpacing,
+      'launcher box-sizing (期望 border-box)': lc.boxSizing,
+      'launcher text-transform (期望 none)': lc.textTransform,
+      'launcher border (期望 none)': lc.borderTopWidth + ' ' + lc.borderTopStyle,
+      'launcher background (--pm-accent 是否被 hotpink 覆盖)': lc.backgroundImage.slice(0, 60),
+      'launcher transition-duration (--pm-dur-base 是否变 4s)': lc.transitionDuration,
+    };
+    document.title = 'DONE';
+    window.__result = out;
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'background:#111;color:#0f0;padding:1rem;font-size:13px;line-height:1.6;overflow:auto';
+    pre.textContent = Object.entries(out).map(([k,v]) => k.padEnd(52) + ': ' + v).join('\n');
+    document.body.appendChild(pre);
+  </script>
+</body></html>

@@ -66,6 +66,16 @@ function buildShadowStyles(prefix: string): string {
   ${cv}-font-mono: "IBM Plex Mono", "SFMono-Regular", "Consolas", monospace;
   ${cv}-error: #b42318;
   ${cv}-success: #087f5b;
+
+  /* Motion scale. Durations are a three-step rhythm rather than ad-hoc
+     values; the curves are strong-decelerate (fast start, long settle),
+     with one overshoot curve reserved for things that "land". */
+  ${cv}-dur-fast: 150ms;
+  ${cv}-dur-base: 240ms;
+  ${cv}-dur-slow: 340ms;
+  ${cv}-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  ${cv}-ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  ${cv}-ease-land: cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 /* ---- Launcher/panel dock positions (attribute: position) ----
@@ -123,13 +133,62 @@ function buildShadowStyles(prefix: string): string {
   box-sizing: border-box;
 }
 
+/* ---- Inheritance firewall ----
+   A :host declaration loses to any document rule that matches the host
+   element -- an explicit patch-mark { line-height: 3 }, a universal reset,
+   a framework preflight -- and inherited properties then flow into the
+   shadow tree even though everything else is isolated. Measured case: an
+   outer line-height of 3 turned the launcher's 20.4px into 40.8px.
+
+   Re-pin typography on the top-level children, where no document rule can
+   reach. Custom properties are deliberately left alone: the --pm-* overrides
+   are the public theming API. Declared before the component rules so a
+   specific rule of equal specificity still wins. */
+:host > * {
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: left;
+  text-indent: 0;
+  text-transform: none;
+  text-shadow: none;
+  color: var(${cv}-ink);
+}
+
+/* ---- Entrances ----
+   Transitions cannot animate a first paint, so every mounted surface gets
+   an explicit keyframe. Panels rise, things that land overshoot slightly. */
+@keyframes ${prefix}-rise {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ${prefix}-land {
+  0%   { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ${prefix}-slide-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ${prefix}-pulse-ring {
+  0%   { opacity: 0.5; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+
 /* ---- Launcher button ---- */
 .${prefix}-launcher-wrap {
   position: relative;
   display: inline-flex;
   pointer-events: auto;
   translate: calc(var(${cv}-dodge-sign, -1) * var(${cv}-dodge-x, 0px)) 0;
-  transition: translate 260ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: translate var(${cv}-dur-base) var(${cv}-ease);
 }
 
 .${prefix}-launcher {
@@ -148,10 +207,10 @@ function buildShadowStyles(prefix: string): string {
   font: inherit;
   font-size: 0.85rem;
   font-weight: 700;
-  transition: border-radius 300ms cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 200ms ease,
-              transform 200ms ease,
-              background 200ms ease;
+  transition: border-radius var(${cv}-dur-base) var(${cv}-ease),
+              box-shadow var(${cv}-dur-base) var(${cv}-ease),
+              transform var(${cv}-dur-base) var(${cv}-ease-land),
+              background var(${cv}-dur-fast) var(${cv}-ease);
   cursor: pointer;
   pointer-events: auto;
   overflow: hidden;
@@ -168,25 +227,31 @@ function buildShadowStyles(prefix: string): string {
   max-width: 0;
   opacity: 0;
   overflow: hidden;
-  transition: max-width 300ms cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 150ms ease,
-              margin-left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: max-width var(${cv}-dur-base) var(${cv}-ease),
+              opacity var(${cv}-dur-fast) var(${cv}-ease),
+              margin-left var(${cv}-dur-base) var(${cv}-ease);
 }
 
 .${prefix}-launcher:hover {
   border-radius: 1.5rem;
-  box-shadow: 0 8px 28px color-mix(in srgb, var(${cv}-accent) 38%, transparent),
+  box-shadow: 0 10px 30px color-mix(in srgb, var(${cv}-accent) 38%, transparent),
               0 2px 8px rgba(0, 0, 0, 0.08);
-  transform: translateY(-1px);
+  /* 1px reads as "nothing happened"; lift plus a hair of scale registers. */
+  transform: translateY(-2px) scale(1.02);
+}
+
+.${prefix}-launcher:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 80ms;
 }
 
 .${prefix}-launcher:hover span {
   max-width: 5rem;
   opacity: 1;
   margin-left: 0.5rem;
-  transition: max-width 300ms cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 150ms ease 100ms,
-              margin-left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: max-width var(${cv}-dur-base) var(${cv}-ease),
+              opacity var(${cv}-dur-fast) var(${cv}-ease) 60ms,
+              margin-left var(${cv}-dur-base) var(${cv}-ease);
 }
 
 .${prefix}-launcher.is-active {
@@ -266,7 +331,7 @@ function buildShadowStyles(prefix: string): string {
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 150ms ease;
+  transition: opacity var(${cv}-dur-fast) var(${cv}-ease);
 }
 
 .${prefix}-launcher-wrap:hover .${prefix}-collapse-btn,
@@ -309,7 +374,9 @@ function buildShadowStyles(prefix: string): string {
   pointer-events: auto;
   cursor: auto;
   translate: calc(var(${cv}-dodge-sign, -1) * var(${cv}-dodge-x, 0px)) 0;
-  transition: translate 260ms cubic-bezier(0.4, 0, 0.2, 1), opacity 160ms ease;
+  transition: translate var(${cv}-dur-base) var(${cv}-ease),
+              opacity var(${cv}-dur-fast) var(${cv}-ease);
+  animation: ${prefix}-rise var(${cv}-dur-slow) var(${cv}-ease) both;
 }
 
 /* Picking mode: pointer over the panel body turns it into a ghost so the
@@ -333,7 +400,9 @@ function buildShadowStyles(prefix: string): string {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(${cv}-line);
-  padding: 0.55rem 0.6rem 0.55rem 0.75rem;
+  /* Symmetric now that the header holds only the tab group; the tighter
+     right inset used to allow for the close button's own hit area. */
+  padding: 0.55rem 0.75rem;
 }
 
 .${prefix}-panel-tabs {
@@ -342,7 +411,6 @@ function buildShadowStyles(prefix: string): string {
 }
 
 .${prefix}-panel-tabs button,
-.${prefix}-close,
 .${prefix}-back,
 .${prefix}-send,
 .${prefix}-copy-btn {
@@ -375,24 +443,9 @@ function buildShadowStyles(prefix: string): string {
   color: var(${cv}-accent-dark);
 }
 
-.${prefix}-close {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.5rem;
-  background: transparent;
-  color: var(${cv}-muted);
-  cursor: pointer;
-}
-
-.${prefix}-close:hover,
 .${prefix}-back:hover {
   background: var(${cv}-surface-muted);
   color: var(${cv}-ink);
-}
-
-.${prefix}-close svg {
-  width: 1rem;
-  height: 1rem;
 }
 
 /* ---- Picker note ---- */
@@ -646,7 +699,10 @@ function buildShadowStyles(prefix: string): string {
   padding: 0;
   color: var(${cv}-muted);
   cursor: pointer;
-  transition: all 140ms ease;
+  transition: border-color var(${cv}-dur-fast) var(${cv}-ease),
+              background var(${cv}-dur-fast) var(${cv}-ease),
+              color var(${cv}-dur-fast) var(${cv}-ease),
+              box-shadow var(${cv}-dur-fast) var(${cv}-ease);
 }
 
 .${prefix}-nav-btn:hover:not(:disabled) {
@@ -679,7 +735,10 @@ function buildShadowStyles(prefix: string): string {
   font-size: 0.74rem;
   font-weight: 650;
   cursor: pointer;
-  transition: all 140ms ease;
+  transition: border-color var(${cv}-dur-fast) var(${cv}-ease),
+              background var(${cv}-dur-fast) var(${cv}-ease),
+              color var(${cv}-dur-fast) var(${cv}-ease),
+              box-shadow var(${cv}-dur-fast) var(${cv}-ease);
 }
 
 .${prefix}-prop-toggle:hover {
@@ -835,17 +894,19 @@ function buildShadowStyles(prefix: string): string {
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
-  transition: box-shadow 200ms ease, transform 200ms ease;
+  transition: box-shadow var(${cv}-dur-base) var(${cv}-ease),
+              transform var(${cv}-dur-base) var(${cv}-ease-land);
 }
 
 .${prefix}-handoff:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.02);
   box-shadow: 0 4px 16px color-mix(in srgb, var(${cv}-accent) 32%, transparent),
               0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .${prefix}-handoff:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.97);
+  transition-duration: 80ms;
 }
 
 .${prefix}-handoff svg {
@@ -864,7 +925,20 @@ function buildShadowStyles(prefix: string): string {
   gap: 0.35rem;
   border-bottom: 1px solid var(${cv}-line);
   padding: 0.9rem 0.65rem;
+  transition: opacity var(${cv}-dur-fast) var(${cv}-ease),
+              background var(${cv}-dur-fast) var(${cv}-ease);
+  animation: ${prefix}-slide-in var(${cv}-dur-base) var(${cv}-ease) both;
 }
+
+/* Staggered arrival: a list that lands as one block reads as a repaint,
+   the same list 40ms apart per row reads as arriving. Capped at six —
+   past that the tail feels laggy rather than lively. */
+.${prefix}-item:nth-child(1) { animation-delay: 0ms; }
+.${prefix}-item:nth-child(2) { animation-delay: 40ms; }
+.${prefix}-item:nth-child(3) { animation-delay: 80ms; }
+.${prefix}-item:nth-child(4) { animation-delay: 120ms; }
+.${prefix}-item:nth-child(5) { animation-delay: 160ms; }
+.${prefix}-item:nth-child(n+6) { animation-delay: 200ms; }
 
 .${prefix}-item:last-child {
   border-bottom: 0;
@@ -917,7 +991,7 @@ function buildShadowStyles(prefix: string): string {
   color: var(${cv}-muted);
   cursor: grab;
   opacity: 0.35;
-  transition: opacity 140ms ease, color 140ms ease;
+  transition: opacity var(${cv}-dur-fast) var(${cv}-ease), color var(${cv}-dur-fast) var(${cv}-ease);
 }
 
 .${prefix}-drag-handle:hover {
@@ -1113,6 +1187,28 @@ function buildShadowStyles(prefix: string): string {
 
   .${prefix}-panel {
     width: min(21rem, calc(100vw - 5.75rem));
+  }
+}
+
+/* ---- Reduced motion ----
+   Vestibular disorders make transform/opacity entrances actively
+   unpleasant, so honour the OS setting: keep state changes instant and
+   drop every entrance, but leave the elements themselves fully visible. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .${prefix}-launcher:hover,
+  .${prefix}-handoff:hover {
+    transform: none;
   }
 }
 `;

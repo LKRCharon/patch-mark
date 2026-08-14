@@ -4,6 +4,40 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-08-14
+
+### Added
+
+- Entrance animations. Transitions cannot animate a first paint, so the panel
+  and annotation rows had been appearing instantly; they now rise into place,
+  with the list staggered per row.
+- A motion scale on `:host`: three durations (`--pm-dur-fast/base/slow`) and
+  three curves (`--pm-ease`, `--pm-ease-soft`, `--pm-ease-land`), replacing
+  ad-hoc values scattered through the stylesheet. Overridable like any other
+  `--pm-*` token.
+- `prefers-reduced-motion` support: entrances and transitions collapse to
+  instant, and the hover lift is dropped, for users who ask the OS for less
+  motion.
+
+### Changed
+
+- Hover and press feedback is now perceptible: the launcher and handoff button
+  lift 2px with a slight scale and settle with a short overshoot, instead of
+  the previous 1px move that read as nothing happening.
+- Removed the panel header's close button. It duplicated the launcher, which
+  already turns into a close control while the panel is open; Escape still
+  closes the tool.
+
+### Fixed
+
+- Host page CSS could pollute the component's typography. A `:host`
+  declaration loses to any document rule matching the host element, so an
+  outer `patch-mark { line-height: 3 }`, a universal reset, or a framework
+  preflight leaked in through inheritance — measured case: the launcher's
+  line-height became 40.8px instead of 20.4px. Typography is now re-pinned on
+  the shadow tree's top-level children, where no document rule can reach.
+  `--pm-*` theming is deliberately unaffected.
+
 ## [1.0.2] - 2026-08-07
 
 ### Fixed
