@@ -13,7 +13,12 @@ type PatchMarkInternals = {
   selectedElement: HTMLElement | null;
   propertyChanges: Record<string, { from: string; to: string }>;
   annotations: Annotation[];
+  annotationsPagePath: string | null;
+  isResolvingAll: boolean;
+  status: string | null;
+  statusType: 'error' | 'success' | null;
   submitAnnotation(): Promise<void>;
+  resolveAllOpenAnnotations(): Promise<void>;
 };
 
 function installPickingDom(t: TestContext): void {
@@ -199,6 +204,94 @@ test('a slow submit does not discard newer property changes', async (t) => {
     'font-size': { from: '12px', to: '16px' },
   });
   assert.deepEqual(state.annotations, [created]);
+});
+
+test('one-click completion resolves the current open snapshot only', async (t) => {
+  installPickingDom(t);
+  const target: ElementTarget = {
+    tagName: 'button',
+    name: '.save',
+    selector: 'button.save',
+    text: 'Save',
+    rect: { top: 10, left: 20, width: 80, height: 32 },
+  };
+  const makeAnnotation = (id: string, status: 'open' | 'resolved'): Annotation => ({
+    id,
+    pagePath: '/preview',
+    pageTitle: 'Preview',
+    message: `Feedback ${id}`,
+    element: target,
+    createdAt: '2026-08-19T00:00:00.000Z',
+    status,
+  });
+  const calls: string[] = [];
+  const tool = new PatchMark();
+  tool.store = {
+    async list() { return []; },
+    async create() { return makeAnnotation('created', 'open'); },
+    async update(id) {
+      calls.push(id);
+      return makeAnnotation(id, 'resolved');
+    },
+  };
+  const state = tool as unknown as PatchMarkInternals;
+  state.mode = 'list';
+  state.annotations = [
+    makeAnnotation('open-1', 'open'),
+    makeAnnotation('done', 'resolved'),
+    makeAnnotation('open-2', 'open'),
+  ];
+  state.annotationsPagePath = '/preview';
+
+  await state.resolveAllOpenAnnotations();
+
+  assert.deepEqual(calls, ['open-1', 'open-2']);
+  assert.deepEqual(state.annotations.map((annotation) => annotation.status), ['resolved', 'resolved', 'resolved']);
+  assert.equal(state.isResolvingAll, false);
+  assert.equal(state.status, `${defaultLabels.resolvedAll} · 2`);
+  assert.equal(state.statusType, 'success');
+});
+
+test('one-click completion keeps failed items open and reports partial success', async (t) => {
+  installPickingDom(t);
+  const target: ElementTarget = {
+    tagName: 'button',
+    name: '.save',
+    selector: 'button.save',
+    text: 'Save',
+    rect: { top: 10, left: 20, width: 80, height: 32 },
+  };
+  const makeAnnotation = (id: string, status: 'open' | 'resolved' = 'open'): Annotation => ({
+    id,
+    pagePath: '/preview',
+    message: `Feedback ${id}`,
+    element: target,
+    createdAt: '2026-08-19T00:00:00.000Z',
+    status,
+  });
+  const errors: string[] = [];
+  const tool = new PatchMark();
+  tool.onError = (error) => errors.push(error.message);
+  tool.store = {
+    async list() { return []; },
+    async create() { return makeAnnotation('created'); },
+    async update(id) {
+      if (id === 'fails') throw new Error('backend unavailable');
+      return makeAnnotation(id, 'resolved');
+    },
+  };
+  const state = tool as unknown as PatchMarkInternals;
+  state.mode = 'list';
+  state.annotations = [makeAnnotation('works'), makeAnnotation('fails')];
+  state.annotationsPagePath = '/preview';
+
+  await state.resolveAllOpenAnnotations();
+
+  assert.deepEqual(state.annotations.map((annotation) => annotation.status), ['resolved', 'open']);
+  assert.deepEqual(errors, ['backend unavailable']);
+  assert.equal(state.isResolvingAll, false);
+  assert.equal(state.status, `${defaultLabels.resolveAllPartial} · 1/2`);
+  assert.equal(state.statusType, 'error');
 });
 
 test('page identity keeps query/hash and reactive labels reset missing fields to defaults', (t) => {

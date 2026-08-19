@@ -57,3 +57,9 @@ await tool.store.update(annotationId, { status: 'resolved' });
 ```
 
 For localStorage, a failed durable write is reported instead of shown as success; the annotation remains in the current in-memory session so the user can recover it.
+
+After reviewing a batch of agent changes, the list's **Complete all** action
+resolves the open annotations visible at click time. It runs at most four
+updates concurrently and reports partial failures without closing failed
+items. The click-time snapshot is intentional: annotations another reviewer
+creates during the batch remain open.

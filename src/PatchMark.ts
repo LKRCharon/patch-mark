@@ -283,6 +283,8 @@ export class PatchMark extends BaseHTMLElement {
   private reorderGeneration = 0;
   private reorderAbortController: AbortController | null = null;
   private resolveGeneration = 0;
+  private resolveAllGeneration = 0;
+  private isResolvingAll = false;
   private resolveRequests = new Map<string, { generation: number; controller: AbortController }>();
   private locatedTarget: PickerTarget | null = null;
   private selectedElement: HTMLElement | null = null;
@@ -651,6 +653,8 @@ export class PatchMark extends BaseHTMLElement {
     this.reorderGeneration += 1;
     this.reorderAbortController?.abort();
     this.reorderAbortController = null;
+    this.resolveAllGeneration += 1;
+    this.isResolvingAll = false;
     this.resolveGeneration += 1;
     for (const request of this.resolveRequests.values()) request.controller.abort();
     this.resolveRequests.clear();
@@ -1360,7 +1364,7 @@ export class PatchMark extends BaseHTMLElement {
   private async resolveAnnotation(id: string): Promise<void> {
     const storeAtStart = this.store;
     const update = storeAtStart.update;
-    if (!update || !this.ensureAuthorizedSession()) return;
+    if (!update || this.isResolvingAll || !this.ensureAuthorizedSession()) return;
     const tokenAtStart = getAuthToken();
     const authAttemptAtStart = this.authAttempt;
     const pagePath = this.currentPagePath();
@@ -1402,6 +1406,91 @@ export class PatchMark extends BaseHTMLElement {
         ) {
           this.updatePanel();
         }
+      }
+    }
+  }
+
+  /**
+   * Resolve the open annotations visible at click time. The snapshot boundary
+   * matters for collaboration: feedback another reviewer creates while this
+   * batch is running must remain open for an explicit later review.
+   */
+  private async resolveAllOpenAnnotations(): Promise<void> {
+    const storeAtStart = this.store;
+    const update = storeAtStart.update;
+    if (!update || this.isResolvingAll || !this.ensureAuthorizedSession()) return;
+
+    const pagePath = this.currentPagePath();
+    if (this.mode !== 'list' || this.annotationsPagePath !== pagePath) return;
+    const ids = this.annotations
+      .filter((annotation) => annotation.status !== 'resolved' && !this.resolveRequests.has(annotation.id))
+      .map((annotation) => annotation.id);
+    if (ids.length === 0) return;
+
+    const tokenAtStart = getAuthToken();
+    const authAttemptAtStart = this.authAttempt;
+    const generation = ++this.resolveAllGeneration;
+    const isCurrentBatch = (): boolean =>
+      generation === this.resolveAllGeneration &&
+      this.store === storeAtStart &&
+      this.mode === 'list' &&
+      this.currentPagePath() === pagePath &&
+      this.annotationsPagePath === pagePath;
+
+    this.isResolvingAll = true;
+    this.status = null;
+    this.statusType = null;
+    this.updatePanel();
+
+    let cursor = 0;
+    let resolved = 0;
+    let failed = 0;
+    const worker = async (): Promise<void> => {
+      while (isCurrentBatch()) {
+        const id = ids[cursor++];
+        if (!id) return;
+        const request = { generation: ++this.resolveGeneration, controller: new AbortController() };
+        this.resolveRequests.set(id, request);
+        try {
+          const updated = parseAnnotation(await update.call(
+            storeAtStart,
+            id,
+            { status: 'resolved' },
+            { pagePath, signal: request.controller.signal },
+          ));
+          if (!isCurrentBatch() || this.resolveRequests.get(id) !== request) return;
+          if (updated.id !== id || updated.status !== 'resolved') {
+            throw new Error(`Store did not resolve annotation ${id}`);
+          }
+          this.annotations = this.annotations.map((annotation) => annotation.id === id ? updated : annotation);
+          resolved += 1;
+        } catch (error) {
+          if (!isCurrentBatch() || this.resolveRequests.get(id) !== request || isAbortError(error)) return;
+          failed += 1;
+          if (this.handleStoreError(
+            error,
+            { operation: 'resolve', annotationId: id },
+            tokenAtStart,
+            authAttemptAtStart,
+          )) return;
+        } finally {
+          if (this.resolveRequests.get(id) === request) this.resolveRequests.delete(id);
+        }
+      }
+    };
+
+    try {
+      const workers = Array.from({ length: Math.min(4, ids.length) }, () => worker());
+      await Promise.all(workers);
+      if (!isCurrentBatch()) return;
+      this.status = failed === 0
+        ? `${this.labels.resolvedAll ?? '已完成全部批注'} · ${resolved}`
+        : `${this.labels.resolveAllPartial ?? '部分批注完成失败'} · ${resolved}/${ids.length}`;
+      this.statusType = failed === 0 ? 'success' : 'error';
+    } finally {
+      if (generation === this.resolveAllGeneration) {
+        this.isResolvingAll = false;
+        if (isCurrentBatch()) this.updatePanel();
       }
     }
   }
@@ -1832,6 +1921,9 @@ export class PatchMark extends BaseHTMLElement {
       case 'resolve':
         if (id) this.resolveAnnotation(id);
         break;
+      case 'resolve-all':
+        this.resolveAllOpenAnnotations();
+        break;
       case 'unlock': {
         const input = this.panelEl?.querySelector(`.${CLASS_PREFIX}-locked-input`);
         const token = input instanceof HTMLInputElement ? input.value.trim() : '';
@@ -2260,11 +2352,21 @@ export class PatchMark extends BaseHTMLElement {
       : '';
 
     const openCount = this.annotations.filter((a) => a.status !== 'resolved').length;
+    const resolveAllHtml = this.store.update
+      ? `<button type="button" class="${CLASS_PREFIX}-resolve-all" data-action="resolve-all" ${this.isResolvingAll ? 'disabled' : ''}>
+          ${ICONS.check}<span>${escapeHtml(this.isResolvingAll
+            ? (this.labels.resolvingAll ?? '完成中…')
+            : (this.labels.resolveAll ?? '一键完成'))} · ${openCount}</span>
+        </button>`
+      : '';
     const handoffHtml = !this.isLoading && openCount > 0
       ? `<div class="${CLASS_PREFIX}-handoff-bar">
-          <button type="button" class="${CLASS_PREFIX}-handoff" data-action="copy-handoff">
-            ${ICONS.send}<span>${escapeHtml(this.labels.copyHandoff ?? 'Copy handoff prompt')} · ${openCount}</span>
-          </button>
+          <div class="${CLASS_PREFIX}-handoff-actions">
+            <button type="button" class="${CLASS_PREFIX}-handoff" data-action="copy-handoff" ${this.isResolvingAll ? 'disabled' : ''}>
+              ${ICONS.send}<span>${escapeHtml(this.labels.copyHandoff ?? 'Copy handoff prompt')} · ${openCount}</span>
+            </button>
+            ${resolveAllHtml}
+          </div>
         </div>`
       : '';
 
@@ -2322,7 +2424,7 @@ export class PatchMark extends BaseHTMLElement {
     button.dataset.action = action;
     button.dataset.id = id;
     if (action === 'resolve') button.className = 'is-resolve';
-    if (action === 'resolve') button.disabled = this.resolveRequests.has(id);
+    if (action === 'resolve') button.disabled = this.isResolvingAll || this.resolveRequests.has(id);
     this.appendIcon(button, icon);
     if (label) button.append(document.createTextNode(label));
     return button;

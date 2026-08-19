@@ -112,6 +112,10 @@ export type AnnotationLabels = {
   collapse?: string;
   resolve: string;
   resolved: string;
+  resolveAll?: string;
+  resolvingAll?: string;
+  resolvedAll?: string;
+  resolveAllPartial?: string;
   properties: string;
   propertiesHint: string;
   colorLabel?: string;

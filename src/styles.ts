@@ -877,6 +877,11 @@ function buildShadowStyles(prefix: string): string {
   border-top: 1px solid var(${cv}-line);
 }
 
+.${prefix}-handoff-actions {
+  display: grid;
+  gap: 0.45rem;
+}
+
 .${prefix}-handoff {
   display: flex;
   align-items: center;
@@ -912,6 +917,46 @@ function buildShadowStyles(prefix: string): string {
 .${prefix}-handoff svg {
   width: 1rem;
   height: 1rem;
+}
+
+.${prefix}-resolve-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(${cv}-success) 45%, var(${cv}-line));
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(${cv}-success) 8%, var(${cv}-panel-solid));
+  padding: 0.55rem 1rem;
+  color: var(${cv}-success);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(${cv}-dur-fast) var(${cv}-ease),
+              transform var(${cv}-dur-fast) var(${cv}-ease);
+}
+
+.${prefix}-resolve-all:hover:not(:disabled) {
+  background: color-mix(in srgb, var(${cv}-success) 14%, var(${cv}-panel-solid));
+  transform: translateY(-1px);
+}
+
+.${prefix}-resolve-all:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.${prefix}-resolve-all svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.${prefix}-handoff:disabled,
+.${prefix}-resolve-all:disabled {
+  cursor: wait;
+  opacity: 0.62;
+  transform: none;
 }
 
 .${prefix}-empty {

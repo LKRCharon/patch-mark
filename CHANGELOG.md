@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-19
+
+### Added
+
+- Added a one-click completion action to the annotation list. It resolves the
+  open annotations visible when clicked, uses at most four concurrent store
+  updates, and leaves feedback created by other reviewers during the batch
+  open for an explicit later review.
+
+### Fixed
+
+- Batch completion reports partial failures and leaves failed annotations open
+  instead of claiming the whole page was completed. Route, store, auth, or
+  component changes abort stale work without mutating the new view.
+
 ## [1.1.0] - 2026-08-14
 
 ### Added

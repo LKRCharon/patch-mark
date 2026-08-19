@@ -85,6 +85,10 @@ The default server exposes only `list_open_annotations`. It labels annotation fi
 
 `resolve_annotation` then requires a summary, changed files, and checks run. It is never a substitute for review or backend authorization. No MCP? The list panel's **handoff bar** copies a trust-bounded prompt that treats annotations as data, not instructions.
 
+After reviewing an agent's batch of changes, **一键完成** resolves the open
+annotations currently visible on that page. It uses a click-time snapshot, so
+new feedback arriving from another reviewer is not accidentally closed.
+
 ## Themes
 
 | Theme | Accent | Works well on |
