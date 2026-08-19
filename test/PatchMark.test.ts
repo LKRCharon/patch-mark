@@ -328,6 +328,17 @@ test('resolved annotation status icon has an explicit compact size', () => {
   );
 });
 
+test('hovered and selected targets retain the translucent accent fill', () => {
+  assert.match(
+    shadowStyles,
+    /\.pm-highlight\s*\{[\s\S]*?background:\s*var\(--pm-accent-soft\);/,
+  );
+  assert.match(
+    shadowStyles,
+    /\.pm-highlight\.is-selected\s*\{\s*background:\s*var\(--pm-accent-soft\);/,
+  );
+});
+
 test('launcher collapse control is a native sibling button', () => {
   const source = readFileSync('src/PatchMark.ts', 'utf8');
 

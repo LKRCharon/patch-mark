@@ -1,6 +1,6 @@
 {
   "name": "patch-mark",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "UI feedback for AI coding agents \u2014 point at elements, get structured context for your agent.",
   "type": "module",
   "main": "./dist/patch-mark.js",

@@ -1155,15 +1155,15 @@ function buildShadowStyles(prefix: string): string {
 .${prefix}-highlight {
   position: fixed;
   border: 2px solid var(${cv}-accent);
-  /* Hover should identify the target, not wash out the content the reviewer
-     is trying to inspect. The selected state adds a slightly stronger ring. */
-  background: transparent;
+  /* Keep the target legible while restoring the translucent theme tint that
+     makes the full annotation area easier to recognize than an outline alone. */
+  background: var(${cv}-accent-soft);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85) inset,
     0 0 0 2px color-mix(in srgb, var(${cv}-accent) 14%, transparent);
 }
 
 .${prefix}-highlight.is-selected {
-  background: transparent;
+  background: var(${cv}-accent-soft);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.85) inset,
     0 0 0 4px color-mix(in srgb, var(${cv}-accent) 18%, transparent);
